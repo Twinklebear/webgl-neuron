@@ -8,7 +8,7 @@
 		integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
 		crossorigin="anonymous">
 
-	<title>WebGL Volume Raycaster</title>
+	<title>WebGL Neuron Viewer</title>
 </head>
 <body>
 	<div class="container mt-4">
@@ -23,13 +23,50 @@
 				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
 					Colormap: <select id="colormapList" onchange="selectColormap()"></select>
 				</div>
-				<div class="col-12 mt-lg-2 mt-0">
+				<div class="col-12 col-lg-12 mt-2 mb-2">
+					<h3>Controls</h3>
 					<p>Mouse Controls: Left-click + drag to rotate, scroll to zoom, right-click + drag to pan.
 					<br/>
 					Touch Controls: One finger drag to rotate, pinch to zoom, two finger drag to pan.
 					</p>
-
 					
+				</div>
+				<div class="col-12 col-lg-12 mb-lg-0 mb-2">
+					<h3>Traces</h3>
+					<div class="form-row">
+						<div class="col-6">
+							<input type="checkbox" class="form-check-input" value="" id="highlightTrace">
+							<label class="form-check-label" for="highlightTrace">
+								Highlight Traces</label>
+						</div>
+						<div class="col-6">
+							<input type="checkbox" class="form-check-input" value="" id="showVolume">
+							<label class="form-check-label" for="showVolume">
+								Show Volume</label>
+						</div>
+					</div>
+					<div class="col-lg-12 col-12 mt-2 mt-lg-0">
+						<input type="file" class="custom-file-input" id="uploadSWC" accept="*.swc"
+								onchange="uploadSWC(this.files);">
+						<label class="custom-file-label" for="uploadSWC">Upload SWC</label>
+					</div>
+					<div class="col-12 mt-2 mb-2" id="swcList">
+						<div class="col-12 mt-2 mb-2" id="swcheader">
+							<div class="row">
+								<div class="col-4">
+									<b>Name</b>
+								</div>
+								<div class="col-4 text-right" id="numBranches">
+									<b>Num. Branches</b>
+								</div>
+								<div class="col-4 text-right" id="numPoints">
+									<b>Num. Points</b>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-12 col-lg-12 mb-lg-0 mb-2">
 					<p id="loadingText"></p>
 					<div class="progress mb-2">
 						<div id="loadingProgressBar" class="progress-bar" role="progressbar"

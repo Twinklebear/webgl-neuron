@@ -17,14 +17,15 @@ var cubeStrip = [
 
 var gl = null;
 
-var swc = null;
-var swcVbo = null;
-var swcEbo = null;
-var swcVao = null;
+var neurons = [];
 var swcShader = null;
 
+var highlightTrace = null;
+var showVolume = null;
+
 var renderTargets = null;
-var fbo = null
+var depthColorFbo = null
+var colorFbo = null;
 var blitImageShader = null;
 
 var shader = null;
@@ -98,6 +99,7 @@ var selectVolume = function() {
 	var selection = document.getElementById("volumeList").value;
 	history.replaceState(history.state, "#" + selection, "#" + selection);
 
+	/*
 	var url = "./diadem_nc_03.swc";
 	var req = new XMLHttpRequest();
 	req.open("GET", url, true);
@@ -105,13 +107,14 @@ var selectVolume = function() {
 	req.onload = function(evt) {
 		var text = req.response;
 		if (text) {
-			swc = new SWCTree(text);
+			neurons.push(new SWCTree(text, "testing"));
 		} else {
 			alert("Unable to load text from SWC");
 			console.log("no buffer?");
 		}
 	};
 	req.send();
+	*/
 
 	loadVolume(volumes[selection], function(file, dataBuffer) {
 		var m = file.match(fileRegex);
@@ -152,65 +155,80 @@ var selectVolume = function() {
 					gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
 				}
 
-				// We got a new SWC file, so upload it to the GPU
-				if (swc != null && swcVbo == null) {
-					swcVao = gl.createVertexArray();
-					gl.bindVertexArray(swcVao);
-
-					swcVbo = gl.createBuffer();
-					gl.bindBuffer(gl.ARRAY_BUFFER, swcVbo);
-					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(swc.points), gl.STATIC_DRAW);
-					gl.enableVertexAttribArray(0);
-					gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-
-					swcEbo = gl.createBuffer();
-					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, swcEbo);
-					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(swc.indices), gl.STATIC_DRAW);
-				}
-
 				var startTime = new Date();
 
 				projView = mat4.mul(projView, proj, camera.camera);
 				var eye = [camera.invCamera[12], camera.invCamera[13], camera.invCamera[14]];
 
-				//gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-				gl.clearColor(0.0, 0.0, 0.0, 0.0);
-				gl.clearDepth(1.0);
+				// Render any SWC files we have
+				gl.bindFramebuffer(gl.FRAMEBUFFER, depthColorFbo);
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-				if (swc) {
-					gl.enable(gl.DEPTH_TEST);
+				gl.enable(gl.DEPTH_TEST);
+				if (neurons.length > 0) {
 					swcShader.use();
 					gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
 					gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
 					gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
+					
+					for (var i = 0; i < neurons.length; ++i) {
+						var swc = neurons[i];
+						if (!swc.visible.checked) {
+							continue;
+						}
 
-					gl.bindVertexArray(swcVao);
-					for (var i = 0; i < swc.branches.length; ++i) {
-						var b = swc.branches[i];
-						gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
+						// Upload new SWC files
+						if (swc.vao == null) {
+							swc.vao = gl.createVertexArray();
+							gl.bindVertexArray(swc.vao);
+
+							swc.vbo = gl.createBuffer();
+							gl.bindBuffer(gl.ARRAY_BUFFER, swc.vbo);
+							gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(swc.points), gl.STATIC_DRAW);
+							gl.enableVertexAttribArray(0);
+							gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+							swc.ebo = gl.createBuffer();
+							gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, swc.ebo);
+							gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(swc.indices), gl.STATIC_DRAW);
+						}
+
+						var color = hexToRGB(swc.color.value);
+						gl.uniform3fv(swcShader.uniforms["swc_color"], color);
+
+						// Draw the SWC file
+						gl.bindVertexArray(swc.vao);
+						for (var j = 0; j < swc.branches.length; ++j) {
+							var b = swc.branches[j];
+							gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
+						}
 					}
 				}
 
-				//gl.disable(gl.DEPTH_TEST);
-				shader.use();
-				gl.uniformMatrix4fv(shader.uniforms["proj_view"], false, projView);
-				//gl.uniformMatrix4fv(shader.uniforms["inv_proj"], false, invProj);
-				gl.uniform3fv(shader.uniforms["eye_pos"], eye);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, colorFbo);
+				if (showVolume.checked) {
+					gl.activeTexture(gl.TEXTURE4);
+					gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
+					shader.use();
+					gl.uniformMatrix4fv(shader.uniforms["proj_view"], false, projView);
+					gl.uniformMatrix4fv(shader.uniforms["inv_proj"], false, invProj);
 
-				gl.bindVertexArray(volumeVao);
-				gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
+					var invView = mat4.invert(mat4.create(), camera.camera);
+					gl.uniformMatrix4fv(shader.uniforms["inv_view"], false, invView);
+					gl.uniform3fv(shader.uniforms["eye_pos"], eye);
+					gl.uniform1i(shader.uniforms["highlight_trace"], highlightTrace.checked);
+
+					gl.bindVertexArray(volumeVao);
+					gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
+				}
 
 				// Seems like we can't blit the framebuffer b/c the default draw fbo might be
 				// using multiple samples?
-				/*
 				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-				gl.disable(gl.DEPTH_TEST);
 				gl.disable(gl.BLEND);
 				gl.disable(gl.CULL_FACE);
 				blitImageShader.use();
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-				*/
 				gl.enable(gl.CULL_FACE);
 				gl.enable(gl.BLEND);
 
@@ -249,6 +267,10 @@ var selectColormap = function() {
 window.onload = function(){
 	fillVolumeSelector();
 	fillcolormapSelector();
+
+	highlightTrace = document.getElementById("highlightTrace");
+	showVolume = document.getElementById("showVolume");
+	showVolume.checked = true;
 
 	var canvas = document.getElementById("glcanvas");
 	gl = canvas.getContext("webgl2");
@@ -294,6 +316,9 @@ window.onload = function(){
 	gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
 	blitImageShader = new Shader(quadVertShader, quadFragShader);
+	blitImageShader.use();
+	gl.uniform1i(blitImageShader.uniforms["colors"], 3);
+
 	swcShader = new Shader(swcVertShader, swcFragShader);
 
 	shader = new Shader(vertShader, fragShader);
@@ -301,6 +326,7 @@ window.onload = function(){
 
 	gl.uniform1i(shader.uniforms["volume"], 0);
 	gl.uniform1i(shader.uniforms["colormap"], 1);
+	gl.uniform1i(shader.uniforms["depth"], 4);
 	gl.uniform1f(shader.uniforms["dt_scale"], 1.0);
 
 	// Setup required OpenGL state for drawing the back faces and
@@ -314,13 +340,13 @@ window.onload = function(){
 	gl.clearDepth(1.0);
 
 	// Setup the render targets for the splat rendering pass
-	/*
 	renderTargets = [gl.createTexture(), gl.createTexture()]
 	gl.bindTexture(gl.TEXTURE_2D, renderTargets[0]);
 	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, WIDTH, HEIGHT);
 
 	gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
 	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, WIDTH, HEIGHT);
+	//gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH24_STENCIL8, WIDTH, HEIGHT);
 
 	for (var i = 0; i < 2; ++i) {
 		gl.bindTexture(gl.TEXTURE_2D, renderTargets[i]);
@@ -330,17 +356,26 @@ window.onload = function(){
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 	}
 
-	gl.activeTexture(gl.TEXTURE1);
+	gl.activeTexture(gl.TEXTURE3);
+	gl.bindTexture(gl.TEXTURE_2D, renderTargets[0]);
+	gl.activeTexture(gl.TEXTURE4);
 	gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
 
-	fbo = gl.createFramebuffer();
-	gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+	depthColorFbo = gl.createFramebuffer();
+	gl.bindFramebuffer(gl.FRAMEBUFFER, depthColorFbo);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
 		gl.TEXTURE_2D, renderTargets[0], 0);
+	//gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT,
+	//	gl.TEXTURE_2D, renderTargets[1], 0);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
 		gl.TEXTURE_2D, renderTargets[1], 0);
 	gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
-	*/
+
+	colorFbo = gl.createFramebuffer();
+	gl.bindFramebuffer(gl.FRAMEBUFFER, colorFbo);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+		gl.TEXTURE_2D, renderTargets[0], 0);
+	gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 
 	// See if we were linked to a datset
 	if (window.location.hash) {
@@ -369,6 +404,14 @@ window.onload = function(){
 	colormapImage.src = "colormaps/cool-warm-paraview.png";
 }
 
+var hexToRGB = function(hex) {
+	var val = parseInt(hex.substr(1), 16);
+	var r = (val >> 16) & 255;
+	var g = (val >> 8) & 255;
+	var b = val & 255;
+	return [r / 255.0, g / 255.0, b / 255.0];
+}
+
 var fillVolumeSelector = function() {
 	var selector = document.getElementById("volumeList");
 	for (v in volumes) {
@@ -387,5 +430,80 @@ var fillcolormapSelector = function() {
 		opt.innerHTML = p;
 		selector.appendChild(opt);
 	}
+}
+
+// Load up the SWC files the user gave us
+var uploadSWC = function(files) {
+	var swcList = document.getElementById("swcList");
+	for (var i = 0; i < files.length; ++i) {
+		var file = files[i];
+		var reader = new FileReader();
+		reader.onerror = function() {
+			alert("Error reading file " + file.name);
+		};
+		reader.onload = function(evt) {
+			var text = reader.result;
+			if (text) {
+				var swc = new SWCTree(text, file.name);
+				addSWCFile(swc);
+			} else {
+				alert("Unable to load file " + file.name);
+			}
+		};
+		reader.readAsText(file);
+	}
+}
+
+var colorBrewerColors = [
+	"#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99",
+	"#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6", "#6a3d9a"
+];
+/*
+var colorBrewerColors = [
+	"#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854",
+	"#ffd92f", "#e5c494", "#b3b3b3"
+];
+*/
+var nextSWCColor = 0;
+
+var addSWCFile = function(swc) {
+	var swcHTMLContent = `
+	<div class="col-12 mt-2 mb-2" id="swc">
+		<div class="row">
+			<div class="col-4">
+				${swc.name}
+			</div>
+			<div class="col-4 text-right" id="numBranches">
+				${swc.branches.length}
+			</div>
+			<div class="col-4 text-right" id="numPoints">
+				${swc.points.length / 3}
+			</div>
+		</div>
+		<div class="form-row">
+			<div class="col-6 text-center">
+				<input type="checkbox" class="form-check-input"
+						id="traceVisible${neurons.length}">
+				<label class="form-check-label" for="traceVisible${neurons.length}">
+					Visible</label>
+			</div>
+			<div class="col-6 text-center">
+				<label for="swcColor${neurons.length}">Color</label>
+				<input type="color" class="form-control" value="#ff0000"
+						id="swcColor${neurons.length}">
+			</div>
+		</div>
+		<hr>
+	</div>
+	`
+	swcList.insertAdjacentHTML("beforeend", swcHTMLContent);
+
+	swc.visible = document.getElementById("traceVisible" + neurons.length);
+	swc.visible.checked = true;
+	swc.color = document.getElementById("swcColor" + neurons.length);
+	swc.color.value = colorBrewerColors[nextSWCColor];
+	nextSWCColor = (nextSWCColor + 1) % colorBrewerColors.length;
+
+	neurons.push(swc);
 }
 

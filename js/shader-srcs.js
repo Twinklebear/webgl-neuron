@@ -25,10 +25,14 @@ precision highp int;
 precision highp float;
 uniform highp sampler3D volume;
 uniform highp sampler2D colormap;
-//uniform highp sampler2D depth;
+uniform highp sampler2D depth;
 uniform ivec3 volume_dims;
+uniform vec3 eye_pos;
+uniform vec3 volume_scale;
 uniform float dt_scale;
-//uniform mat4 inv_proj;
+uniform mat4 inv_proj;
+uniform mat4 inv_view;
+uniform int highlight_trace;
 
 in vec3 vray_dir;
 flat in vec3 transformed_eye;
@@ -59,6 +63,23 @@ float wang_hash(int seed) {
 	return float(seed % 2147483647) / float(2147483647);
 }
 
+// Linearize the depth value passed in
+// TODO: Encode/decode via http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
+// what do people do for shadow mapping? it's the same thing..
+// use webgl depth texture extension for this
+float linearize(float d) {
+	float near = 0.0;
+	float far = 1.0;
+	return (2.f * d - near - far) / (far - near);
+}
+
+// Reconstruct the view-space depth
+vec4 compute_view_pos(float z) {
+	vec4 pos = vec4(gl_FragCoord.xy / vec2(640, 480) * 2.f - 1.f, z, 1.f);
+	pos = inv_proj * pos;
+	return pos / pos.w;
+}
+
 void main(void) {
 	vec3 ray_dir = normalize(vray_dir);
 	vec2 t_hit = intersect_box(transformed_eye, ray_dir);
@@ -68,8 +89,19 @@ void main(void) {
 
 	t_hit.x = max(t_hit.x, 0.0);
 
-	//float geom_depth = compute_view_pos().z;
-	//t_hit.y = min(geom_depth, t_hit.y);
+	float z = linearize(texelFetch(depth, ivec2(gl_FragCoord), 0).x);
+	if (z < 1.0) {
+		vec3 volume_translation = vec3(0.5) - volume_scale * 0.5;
+		vec3 geom_pos = (inv_view * compute_view_pos(z)).xyz;
+		geom_pos = (geom_pos - volume_translation) / volume_scale;
+		t_hit.y = min(length(geom_pos - transformed_eye), t_hit.y);
+
+		// Highlighting the trace just skips properly compositing it in the volume
+		if (highlight_trace != 0) {
+			color = vec4(0);
+			return;
+		}
+	}
 
 	vec3 dt_vec = 1.0 / (vec3(volume_dims) * abs(ray_dir));
 	float dt = dt_scale * min(dt_vec.x, min(dt_vec.y, dt_vec.z));
@@ -89,7 +121,7 @@ void main(void) {
 
 var swcVertShader =
 `#version 300 es
-#line 86
+#line 127
 layout(location=0) in vec3 pos;
 
 uniform mat4 proj_view;
@@ -103,18 +135,20 @@ void main(void) {
 
 var swcFragShader =
 `#version 300 es
-#line 100
+#line 139
 precision highp float;
+
+uniform vec3 swc_color;
 
 out vec4 color;
 
 void main(void) {
-	color = vec4(1, 0, 0, 1);
+	color = vec4(swc_color, 1);
 }`;
 
 var quadVertShader =
 `#version 300 es
-#line 111
+#line 152
 const vec4 pos[4] = vec4[4](
 	vec4(-1, 1, 0.5, 1),
 	vec4(-1, -1, 0.5, 1),
@@ -127,7 +161,7 @@ void main(void){
 
 var quadFragShader =
 `#version 300 es
-#line 124
+#line 165
 precision highp int;
 precision highp float;
 
@@ -139,20 +173,3 @@ void main(void){
 	color = texelFetch(colors, uv, 0);
 }`;
 
-
-/*
-// Linearize the depth value passed in
-// TODO: Encode/decode via http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
-float linearize(float d){
-	return (2.f * d - gl_DepthRange.near - gl_DepthRange.far)
-		/ (gl_DepthRange.far - gl_DepthRange.near);
-}
-
-// Reconstruct the view-space depth
-vec4 compute_view_pos(void){
-	float z = linearize(texelFetch(depth, ivec2(gl_FragCoord), 0).x);
-	vec4 pos = vec4(gl_FragCoord.xy / vec2(640, 480) * 2.f - 1.f, z, 1.f);
-	pos = inv_proj * pos;
-	return pos / pos.w;
-}
-*/

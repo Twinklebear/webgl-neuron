@@ -1,10 +1,16 @@
 // Load the SWC Tree structure from the swc file passed
-var SWCTree = function(swcFile) {
-	var lines = swcFile.split("\n");
+var SWCTree = function(swcFile, name) {
+	this.name = name;
 	this.branches = [];
 	this.indices = []
 	this.points = []
+
+	this.vao = null;
+	this.vbo = null;
+	this.ebo = null;
+
 	var branch = {}
+	var lines = swcFile.split("\n");
 	for (var i = 0; i < lines.length; ++i) {
 		if (lines[i][0] == "#") {
 			continue;
