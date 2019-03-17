@@ -101,23 +101,6 @@ var selectVolume = function() {
 	var selection = document.getElementById("volumeList").value;
 	history.replaceState(history.state, "#" + selection, "#" + selection);
 
-	/*
-	var url = "./diadem_nc_03.swc";
-	var req = new XMLHttpRequest();
-	req.open("GET", url, true);
-	req.responseType = "text";
-	req.onload = function(evt) {
-		var text = req.response;
-		if (text) {
-			neurons.push(new SWCTree(text, "testing"));
-		} else {
-			alert("Unable to load text from SWC");
-			console.log("no buffer?");
-		}
-	};
-	req.send();
-	*/
-
 	loadVolume(volumes[selection], function(file, dataBuffer) {
 		var m = file.match(fileRegex);
 		var volDims = [parseInt(m[2]), parseInt(m[3]), parseInt(m[4])];
@@ -455,6 +438,36 @@ var uploadSWC = function(files) {
 			}
 		};
 		reader.readAsText(file);
+	}
+}
+
+var loadReference = function() {
+	var referenceTraces = [
+		"esc50ohdwghq2cj/diadem_nc_03.swc"
+	];
+	var swcFileRegex = /.*\/(\w+).swc.*/;
+
+	for (var i = 0; i < referenceTraces.length; ++i) {
+		var file = referenceTraces[i];
+		var url = "https://www.dl.dropboxusercontent.com/s/" + file + "?dl=1";
+		var req = new XMLHttpRequest();
+
+		req.open("GET", url, true);
+		req.responseType = "text";
+		req.onerror = function(evt) {
+			alert("Failed to load reference trace from " + url);
+		};
+		req.onload = function(evt) {
+			var text = req.response;
+			if (text) {
+				var m = file.match(swcFileRegex);
+				var swc = new SWCTree(text, m[1]);
+				addSWCFile(swc);
+			} else {
+				alert("Unable to load reference trace from " + url);
+			}
+		};
+		req.send();
 	}
 }
 
