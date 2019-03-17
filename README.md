@@ -1,6 +1,6 @@
 # WebGL Neuron Viewer
 
-A neuron visualization system in WebGL, [try it out online!](https://www.willusher.io/webgl-neuron/).
+A neuron visualization system in WebGL, [try it out online!](https://www.willusher.io/webgl-neuron/)
 The volume data
 is rendered using my [WebGL volume raycaster](https://github.com/Twinklebear/webgl-volume-raycaster/).
 Neuron traces can be uploaded in the [SWC](http://research.mssm.edu/cnic/swc.html) file format.
