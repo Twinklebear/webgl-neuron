@@ -25,8 +25,10 @@ precision highp int;
 precision highp float;
 uniform highp sampler3D volume;
 uniform highp sampler2D colormap;
+//uniform highp sampler2D depth;
 uniform ivec3 volume_dims;
 uniform float dt_scale;
+//uniform mat4 inv_proj;
 
 in vec3 vray_dir;
 flat in vec3 transformed_eye;
@@ -63,7 +65,12 @@ void main(void) {
 	if (t_hit.x > t_hit.y) {
 		discard;
 	}
+
 	t_hit.x = max(t_hit.x, 0.0);
+
+	//float geom_depth = compute_view_pos().z;
+	//t_hit.y = min(geom_depth, t_hit.y);
+
 	vec3 dt_vec = 1.0 / (vec3(volume_dims) * abs(ray_dir));
 	float dt = dt_scale * min(dt_vec.x, min(dt_vec.y, dt_vec.z));
 	float offset = wang_hash(int(gl_FragCoord.x + 640.0 * gl_FragCoord.y));
@@ -84,6 +91,7 @@ var swcVertShader =
 `#version 300 es
 #line 86
 layout(location=0) in vec3 pos;
+
 uniform mat4 proj_view;
 uniform vec3 volume_scale;
 uniform ivec3 volume_dims;
@@ -95,7 +103,7 @@ void main(void) {
 
 var swcFragShader =
 `#version 300 es
-#line 98
+#line 100
 precision highp float;
 
 out vec4 color;
@@ -104,3 +112,47 @@ void main(void) {
 	color = vec4(1, 0, 0, 1);
 }`;
 
+var quadVertShader =
+`#version 300 es
+#line 111
+const vec4 pos[4] = vec4[4](
+	vec4(-1, 1, 0.5, 1),
+	vec4(-1, -1, 0.5, 1),
+	vec4(1, 1, 0.5, 1),
+	vec4(1, -1, 0.5, 1)
+);
+void main(void){
+	gl_Position = pos[gl_VertexID];
+}`;
+
+var quadFragShader =
+`#version 300 es
+#line 124
+precision highp int;
+precision highp float;
+
+uniform sampler2D colors;
+out vec4 color;
+
+void main(void){ 
+	ivec2 uv = ivec2(gl_FragCoord.xy);
+	color = texelFetch(colors, uv, 0);
+}`;
+
+
+/*
+// Linearize the depth value passed in
+// TODO: Encode/decode via http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
+float linearize(float d){
+	return (2.f * d - gl_DepthRange.near - gl_DepthRange.far)
+		/ (gl_DepthRange.far - gl_DepthRange.near);
+}
+
+// Reconstruct the view-space depth
+vec4 compute_view_pos(void){
+	float z = linearize(texelFetch(depth, ivec2(gl_FragCoord), 0).x);
+	vec4 pos = vec4(gl_FragCoord.xy / vec2(640, 480) * 2.f - 1.f, z, 1.f);
+	pos = inv_proj * pos;
+	return pos / pos.w;
+}
+*/

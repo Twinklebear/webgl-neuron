@@ -15,13 +15,18 @@ var cubeStrip = [
 	0, 0, 0
 ];
 
+var gl = null;
+
 var swc = null;
 var swcVbo = null;
 var swcEbo = null;
 var swcVao = null;
 var swcShader = null;
 
-var gl = null;
+var renderTargets = null;
+var fbo = null
+var blitImageShader = null;
+
 var shader = null;
 var volumeTexture = null;
 var volumeVao = null;
@@ -139,9 +144,6 @@ var selectVolume = function() {
 				if (document.hidden) {
 					return;
 				}
-				var startTime = new Date();
-				gl.clearColor(0.0, 0.0, 0.0, 0.0);
-				gl.clear(gl.COLOR_BUFFER_BIT);
 
 				// Reset the sampling rate and camera for new volumes
 				if (newVolumeUpload) {
@@ -166,29 +168,51 @@ var selectVolume = function() {
 					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(swc.indices), gl.STATIC_DRAW);
 				}
 
+				var startTime = new Date();
+
 				projView = mat4.mul(projView, proj, camera.camera);
 				var eye = [camera.invCamera[12], camera.invCamera[13], camera.invCamera[14]];
 
-				shader.use();
-				gl.uniformMatrix4fv(shader.uniforms["proj_view"], false, projView);
-				gl.uniform3fv(shader.uniforms["eye_pos"], eye);
-
-				gl.bindVertexArray(volumeVao);
-				gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
-
-				// TODO: Proper depth compositing in the volume
+				//gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+				gl.clearColor(0.0, 0.0, 0.0, 0.0);
+				gl.clearDepth(1.0);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 				if (swc) {
+					gl.enable(gl.DEPTH_TEST);
 					swcShader.use();
 					gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
 					gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
-					gl.bindVertexArray(swcVao);
 					gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
 
+					gl.bindVertexArray(swcVao);
 					for (var i = 0; i < swc.branches.length; ++i) {
 						var b = swc.branches[i];
 						gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
 					}
 				}
+
+				//gl.disable(gl.DEPTH_TEST);
+				shader.use();
+				gl.uniformMatrix4fv(shader.uniforms["proj_view"], false, projView);
+				//gl.uniformMatrix4fv(shader.uniforms["inv_proj"], false, invProj);
+				gl.uniform3fv(shader.uniforms["eye_pos"], eye);
+
+				gl.bindVertexArray(volumeVao);
+				gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
+
+				// Seems like we can't blit the framebuffer b/c the default draw fbo might be
+				// using multiple samples?
+				/*
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+				gl.disable(gl.DEPTH_TEST);
+				gl.disable(gl.BLEND);
+				gl.disable(gl.CULL_FACE);
+				blitImageShader.use();
+				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+				*/
+				gl.enable(gl.CULL_FACE);
+				gl.enable(gl.BLEND);
 
 				// Wait for rendering to actually finish
 				gl.finish();
@@ -237,6 +261,7 @@ window.onload = function(){
 
 	proj = mat4.perspective(mat4.create(), 60 * Math.PI / 180.0,
 		WIDTH / HEIGHT, 0.1, 100);
+	invProj = mat4.invert(mat4.create(), proj);
 
 	camera = new ArcballCamera(center, 2, [WIDTH, HEIGHT]);
 	projView = mat4.create();
@@ -268,6 +293,7 @@ window.onload = function(){
 	gl.enableVertexAttribArray(0);
 	gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
+	blitImageShader = new Shader(quadVertShader, quadFragShader);
 	swcShader = new Shader(swcVertShader, swcFragShader);
 
 	shader = new Shader(vertShader, fragShader);
@@ -283,6 +309,38 @@ window.onload = function(){
 	gl.cullFace(gl.FRONT);
 	gl.enable(gl.BLEND);
 	gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+	gl.clearColor(0.0, 0.0, 0.0, 0.0);
+	gl.clearDepth(1.0);
+
+	// Setup the render targets for the splat rendering pass
+	/*
+	renderTargets = [gl.createTexture(), gl.createTexture()]
+	gl.bindTexture(gl.TEXTURE_2D, renderTargets[0]);
+	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, WIDTH, HEIGHT);
+
+	gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
+	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, WIDTH, HEIGHT);
+
+	for (var i = 0; i < 2; ++i) {
+		gl.bindTexture(gl.TEXTURE_2D, renderTargets[i]);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	}
+
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
+
+	fbo = gl.createFramebuffer();
+	gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+		gl.TEXTURE_2D, renderTargets[0], 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+		gl.TEXTURE_2D, renderTargets[1], 0);
+	gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+	*/
 
 	// See if we were linked to a datset
 	if (window.location.hash) {

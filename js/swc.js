@@ -6,7 +6,6 @@ var SWCTree = function(swcFile) {
 	this.points = []
 	var branch = {}
 	for (var i = 0; i < lines.length; ++i) {
-		console.log(lines[i]);
 		if (lines[i][0] == "#") {
 			continue;
 		}
