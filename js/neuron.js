@@ -443,31 +443,71 @@ var uploadSWC = function(files) {
 
 var loadReference = function() {
 	var referenceTraces = [
-		"esc50ohdwghq2cj/diadem_nc_03.swc"
+		"eoi1v4ljg57rxqi/NC_01.swc",
+		"bfiyjwh5yn1p0za/NC_02.swc",
+		"vwjwesnrbgr4tjj/NC_03.swc",
+		"jeufs20oc5yzvub/NC_04.swc",
+		"2ys0gk8635x9yt2/NC_05.swc",
+		"4xmm305jakor382/NC_06.swc",
+		"3o0fhvzfybpsp5z/NC_07.swc",
+		"hyhi1xav9ezvug8/NC_08.swc",
+		"yzko7oe1tn9p1ii/NC_09.swc",
+		"cs6er8399zmyezs/NC_10.swc",
+		"b7heei13tcmgzos/NC_11.swc",
+		"o0cw7b80xrvhnl3/NC_12.swc",
+		"fou5gezumjh704r/NC_13.swc",
+		"3xtb473tw9muhao/NC_14.swc",
+		"vegtbrhiesddmoc/NC_15.swc",
+		"e6qu43lxc0orrgi/NC_16.swc",
+		"se22spz51ocuwdm/NC_17.swc",
+		"rq129kxph1yqba3/NC_18.swc",
+		"0hqhfpovfjoitgg/NC_19.swc",
+		"ruxexsh7x5u5ue7/NC_20.swc",
+		"74bmqgoup2pejq3/NC_21.swc",
+		"yguszsopbyektdk/NC_22.swc",
+		"h1n9ecdr2v6x3qn/NC_23.swc",
+		"cnytvpzk4unva2f/NC_24.swc",
+		"g4hv06u5zuuhp4p/NC_25.swc",
+		"p71x8ic7fhdpry6/NC_26.swc",
+		"6r547xn8ohos6i4/NC_27.swc",
+		"s1sbs0ktmjq1gcj/NC_28.swc",
+		"q1w8m5nba9lafps/NC_29.swc",
+		"t3t9f1m61xe5dn2/NC_30.swc",
+		"smqs2reslrhwnh5/NC_31.swc",
+		"uj292uu3jjlmnn4/NC_32.swc",
+		"laq2jhdi4iytd9e/NC_33.swc",
+		"ml2cojmc7dz8tpy/NC_34.swc"
 	];
 	var swcFileRegex = /.*\/(\w+).swc.*/;
 
-	for (var i = 0; i < referenceTraces.length; ++i) {
+	// Javascript is a mess...
+	var launcReq = function(i) {
 		var file = referenceTraces[i];
 		var url = "https://www.dl.dropboxusercontent.com/s/" + file + "?dl=1";
 		var req = new XMLHttpRequest();
 
+		console.log(url);
 		req.open("GET", url, true);
 		req.responseType = "text";
 		req.onerror = function(evt) {
-			alert("Failed to load reference trace from " + url);
+			console.log("Failed to load reference trace from " + url);
 		};
 		req.onload = function(evt) {
 			var text = req.response;
+			console.log(req.responseURL);
 			if (text) {
-				var m = file.match(swcFileRegex);
+				var m = req.responseURL.match(swcFileRegex);
 				var swc = new SWCTree(text, m[1]);
 				addSWCFile(swc);
 			} else {
-				alert("Unable to load reference trace from " + url);
+				console.log("Unable to load reference trace from " + url);
 			}
 		};
 		req.send();
+	};
+
+	for (var i = 0; i < referenceTraces.length; ++i) {
+		launcReq(i);
 	}
 }
 
