@@ -33,6 +33,7 @@ uniform float dt_scale;
 uniform mat4 inv_proj;
 uniform mat4 inv_view;
 uniform int highlight_trace;
+uniform float threshold;
 
 in vec3 vray_dir;
 flat in vec3 transformed_eye;
@@ -64,16 +65,13 @@ float wang_hash(int seed) {
 }
 
 // Linearize the depth value passed in
-// TODO: Encode/decode via http://aras-p.info/blog/2009/07/30/encoding-floats-to-rgba-the-final/
-// what do people do for shadow mapping? it's the same thing..
-// use webgl depth texture extension for this
 float linearize(float d) {
 	float near = 0.0;
 	float far = 1.0;
 	return (2.f * d - near - far) / (far - near);
 }
 
-// Reconstruct the view-space depth
+// Reconstruct the view-space position
 vec4 compute_view_pos(float z) {
 	vec4 pos = vec4(gl_FragCoord.xy / vec2(640, 480) * 2.f - 1.f, z, 1.f);
 	pos = inv_proj * pos;
@@ -97,6 +95,7 @@ void main(void) {
 		t_hit.y = min(length(geom_pos - transformed_eye), t_hit.y);
 
 		// Highlighting the trace just skips properly compositing it in the volume
+		// to always show it on top
 		if (highlight_trace != 0) {
 			color = vec4(0);
 			return;
@@ -109,11 +108,14 @@ void main(void) {
 	vec3 p = transformed_eye + (t_hit.x + offset * dt) * ray_dir;
 	for (float t = t_hit.x; t < t_hit.y; t += dt) {
 		float val = texture(volume, p).r;
-		vec4 val_color = vec4(texture(colormap, vec2(val, 0.5)).rgb, val);
-		color.rgb += (1.0 - color.a) * val_color.a * val_color.rgb;
-		color.a += (1.0 - color.a) * val_color.a;
-		if (color.a >= 0.95) {
-			break;
+		if (val >= threshold) {
+			val = (val - threshold) / (1.0 - threshold);
+			vec4 val_color = vec4(texture(colormap, vec2(val, 0.5)).rgb, val);
+			color.rgb += (1.0 - color.a) * val_color.a * val_color.rgb;
+			color.a += (1.0 - color.a) * val_color.a;
+			if (color.a >= 0.95) {
+				break;
+			}
 		}
 		p += ray_dir * dt;
 	}
@@ -135,7 +137,7 @@ void main(void) {
 
 var swcFragShader =
 `#version 300 es
-#line 139
+#line 141
 precision highp float;
 
 uniform vec3 swc_color;
@@ -148,7 +150,7 @@ void main(void) {
 
 var quadVertShader =
 `#version 300 es
-#line 152
+#line 154
 const vec4 pos[4] = vec4[4](
 	vec4(-1, 1, 0.5, 1),
 	vec4(-1, -1, 0.5, 1),
@@ -161,7 +163,7 @@ void main(void){
 
 var quadFragShader =
 `#version 300 es
-#line 165
+#line 167
 precision highp int;
 precision highp float;
 

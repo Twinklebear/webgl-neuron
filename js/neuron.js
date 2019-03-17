@@ -22,6 +22,7 @@ var swcShader = null;
 
 var highlightTrace = null;
 var showVolume = null;
+var volumeThreshold = null;
 
 var renderTargets = null;
 var depthColorFbo = null
@@ -49,6 +50,7 @@ var volumes = {
 };
 
 var colormaps = {
+	"Grayscale": "colormaps/grayscale.png",
 	"Cool Warm": "colormaps/cool-warm-paraview.png",
 	"Matplotlib Plasma": "colormaps/matplotlib-plasma.png",
 	"Matplotlib Virdis": "colormaps/matplotlib-virdis.png",
@@ -216,6 +218,7 @@ var selectVolume = function() {
 					gl.uniformMatrix4fv(shader.uniforms["inv_view"], false, invView);
 					gl.uniform3fv(shader.uniforms["eye_pos"], eye);
 					gl.uniform1i(shader.uniforms["highlight_trace"], highlightTrace.checked);
+					gl.uniform1f(shader.uniforms["threshold"], volumeThreshold.value);
 
 					gl.bindVertexArray(volumeVao);
 					gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
@@ -241,6 +244,7 @@ var selectVolume = function() {
 				// If we're dropping frames, decrease the sampling rate
 				if (!newVolumeUpload && targetSamplingRate > samplingRate) {
 					samplingRate = 0.5 * samplingRate + 0.5 * targetSamplingRate;
+					shader.use();
 					gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
 				}
 				newVolumeUpload = false;
@@ -271,6 +275,9 @@ window.onload = function(){
 	highlightTrace = document.getElementById("highlightTrace");
 	showVolume = document.getElementById("showVolume");
 	showVolume.checked = true;
+
+	volumeThreshold = document.getElementById("threshold");
+	volumeThreshold.value = 0.1;
 
 	var canvas = document.getElementById("glcanvas");
 	gl = canvas.getContext("webgl2");
@@ -336,7 +343,7 @@ window.onload = function(){
 	gl.enable(gl.BLEND);
 	gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-	gl.clearColor(0.0, 0.0, 0.0, 0.0);
+	gl.clearColor(0.1, 0.1, 0.1, 1.0);
 	gl.clearDepth(1.0);
 
 	// Setup the render targets for the splat rendering pass
@@ -346,7 +353,6 @@ window.onload = function(){
 
 	gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
 	gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT32F, WIDTH, HEIGHT);
-	//gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH24_STENCIL8, WIDTH, HEIGHT);
 
 	for (var i = 0; i < 2; ++i) {
 		gl.bindTexture(gl.TEXTURE_2D, renderTargets[i]);
@@ -365,8 +371,6 @@ window.onload = function(){
 	gl.bindFramebuffer(gl.FRAMEBUFFER, depthColorFbo);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
 		gl.TEXTURE_2D, renderTargets[0], 0);
-	//gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT,
-	//	gl.TEXTURE_2D, renderTargets[1], 0);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
 		gl.TEXTURE_2D, renderTargets[1], 0);
 	gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
@@ -401,7 +405,7 @@ window.onload = function(){
 
 		selectVolume();
 	};
-	colormapImage.src = "colormaps/cool-warm-paraview.png";
+	colormapImage.src = "colormaps/grayscale.png";
 }
 
 var hexToRGB = function(hex) {
