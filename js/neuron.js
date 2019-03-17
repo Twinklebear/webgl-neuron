@@ -422,7 +422,8 @@ var fillcolormapSelector = function() {
 // Load up the SWC files the user gave us
 var uploadSWC = function(files) {
 	var swcList = document.getElementById("swcList");
-	for (var i = 0; i < files.length; ++i) {
+	// Javascript is a mess...
+	var loadFile = function(i) {
 		var file = files[i];
 		var reader = new FileReader();
 		reader.onerror = function() {
@@ -438,6 +439,10 @@ var uploadSWC = function(files) {
 			}
 		};
 		reader.readAsText(file);
+	};
+
+	for (var i = 0; i < files.length; ++i) {
+		loadFile(i);
 	}
 }
 
@@ -490,7 +495,7 @@ var loadReference = function() {
 		req.open("GET", url, true);
 		req.responseType = "text";
 		req.onerror = function(evt) {
-			console.log("Failed to load reference trace from " + url);
+			alert("Failed to load reference trace from " + url);
 		};
 		req.onload = function(evt) {
 			var text = req.response;
@@ -500,7 +505,7 @@ var loadReference = function() {
 				var swc = new SWCTree(text, m[1]);
 				addSWCFile(swc);
 			} else {
-				console.log("Unable to load reference trace from " + url);
+				alert("Unable to load reference trace from " + url);
 			}
 		};
 		req.send();
