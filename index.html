@@ -18,7 +18,7 @@
 			</div>
 			<div class="mx-auto col-12 col-lg-8 row">
 				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
-					Volume: <select id="volumeList" onchange="selectVolume()"></select>
+					<p id="volumeName">Volume:</p>
 				</div>
 				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
 					Colormap: <select id="colormapList" onchange="selectColormap()"></select>
@@ -42,7 +42,8 @@
 					<a href="http://diademchallenge.org/">DIADEM Challenge</a>.
 					</p>
 				</div>
-				<div class="col-12 mt-2 mb-2">
+				<!-- hidden until the RAW is loaded -->
+				<div class="col-12 mt-2 mb-2" style="display:none" id="tiffUploadBox">
 					<div class="col-12 mt-0 mb-0">
 						<input type="file" class="custom-file-input" id="uploadTIFF" accept="*.tif,*.tiff"
 								onchange="uploadTIFF(this.files);" multiple>
