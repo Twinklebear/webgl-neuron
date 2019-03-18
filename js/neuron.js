@@ -452,7 +452,7 @@ const TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
 const TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6; 
 
 var uploadTIFF = function(files) {
-	console.log(files);
+
 	var loadFile = function(i) {
 		var file = files[i];
 		var reader = new FileReader();
@@ -479,11 +479,6 @@ var uploadTIFF = function(files) {
 
 				var numStrips = TIFFNumberOfStrips(tiff);
 				var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
-
-				if (i == 0) {
-					console.log(`Image Format ${imgFormat}`);
-					console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
-				}
 
 				var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
 				var img = new Uint8Array(width * height * bytesPerSample);
@@ -533,9 +528,56 @@ var uploadTIFF = function(files) {
 		reader.readAsArrayBuffer(file);
 	};
 
-	for (var i = 0; i < files.length; ++i) {
-		loadFile(i);
-	}
+	// First we need to load the first file to get the width, height and color format info
+	var reader = new FileReader();
+	reader.onerror = function() {
+		alert("Error reading TIFF file " + files[0].name);
+	};
+	reader.onload = function(evt) {
+		var buf = reader.result;
+		if (buf) {
+			var tiff = new Tiff({buffer: buf});
+
+			// We only support single channel images
+			if (tiff.getField(Tiff.Tag.SAMPLESPERPIXEL) != 1) {
+				alert("Only single channel images are supported");
+				return;
+			}
+
+			var imgFormat = tiff.getField(Tiff.Tag.SAMPLEFORMAT);
+
+			var width = tiff.width();
+			var height = tiff.height();
+
+			var numStrips = TIFFNumberOfStrips(tiff);
+			var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
+
+			console.log(`Image Format ${imgFormat}`);
+			console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
+			console.log(`img dims ${tiff.width()}x${tiff.height()}`);
+
+			var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
+
+			tiff.close();
+
+			gl.activeTexture(gl.TEXTURE0);
+			volumeTexture = gl.createTexture();
+			// TODO Should not render until we're done uploading to avoid forcing a partial upload
+			gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+			gl.texStorage3D(gl.TEXTURE_3D, 1, gl.R8, width, height, files.length);
+			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			
+			for (var i = 0; i < files.length; ++i) {
+				loadFile(i);
+			}
+		} else {
+			alert("Unable to load file " + file.name);
+		}
+	};
+	reader.readAsArrayBuffer(files[0]);
 }
 
 // Load up the SWC files the user gave us
