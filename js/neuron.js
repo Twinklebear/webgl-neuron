@@ -235,9 +235,12 @@ var renderLoop = function() {
 	// If we're dropping frames, decrease the sampling rate, or if we're
 	// rendering faster try increasing it to provide better quality
 	if (!newVolumeUpload) {
-		samplingRate = 0.9 * samplingRate + 0.1 * targetSamplingRate;
-		shader.use();
-		gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
+		// Chrome doesn't actually wait for gl.finish to return
+		if (renderTime > 0) {
+			samplingRate = 0.9 * samplingRate + 0.1 * targetSamplingRate;
+			shader.use();
+			gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
+		}
 	}
 	newVolumeUpload = false;
 	startTime = endTime;
