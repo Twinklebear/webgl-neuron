@@ -30,7 +30,9 @@ var SWCTree = function(swcFile, name) {
 
 			branch = { "start": this.indices.length };
 			// IDs in the file start at 1
-			this.indices.push(parentID - 1);
+			if (parentID != -1) {
+				this.indices.push(parentID - 1);
+			}
 			this.indices.push(this.points.length / 3);
 		} else {
 			this.indices.push(this.points.length / 3);
