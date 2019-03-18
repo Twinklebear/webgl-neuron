@@ -24,8 +24,10 @@ var fragShader =
 precision highp int;
 precision highp float;
 uniform highp sampler3D volume;
+uniform highp usampler3D ivolume;
 uniform highp sampler2D colormap;
 uniform highp sampler2D depth;
+uniform vec2 value_range;
 uniform ivec3 volume_dims;
 uniform vec3 eye_pos;
 uniform vec3 volume_scale;
@@ -34,6 +36,7 @@ uniform mat4 inv_proj;
 uniform mat4 inv_view;
 uniform int highlight_trace;
 uniform float threshold;
+uniform int volume_is_int;
 
 in vec3 vray_dir;
 flat in vec3 transformed_eye;
@@ -107,7 +110,14 @@ void main(void) {
 	float offset = wang_hash(int(gl_FragCoord.x + 640.0 * gl_FragCoord.y));
 	vec3 p = transformed_eye + (t_hit.x + offset * dt) * ray_dir;
 	for (float t = t_hit.x; t < t_hit.y; t += dt) {
-		float val = texture(volume, p).r;
+		float val = 0.0;
+		if (volume_is_int == 0) {
+			val = texture(volume, p).r;
+		} else {
+			val = float(texture(ivolume, p).r);
+		}
+		val = (val - value_range.x) / (value_range.y - value_range.x);
+
 		if (val >= threshold) {
 			val = (val - threshold) / (1.0 - threshold);
 			vec4 val_color = vec4(texture(colormap, vec2(val, 0.5)).rgb, val);

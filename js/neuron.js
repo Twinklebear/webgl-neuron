@@ -34,6 +34,8 @@ var volumeTexture = null;
 var volumeLoaded = false;
 var volumeVao = null;
 var volDims = null;
+var volValueRange = null;
+var volumeIsInt = 0;
 
 var colormapTex = null;
 var fileRegex = /.*\/(\w+)_(\d+)x(\d+)x(\d+)_(\w+)\.*/;
@@ -96,6 +98,7 @@ var loadRAWVolume = function(file, onload) {
 			dataBuffer = new Uint8Array(dataBuffer);
 			var m = file.match(fileRegex);
 
+			volumeIsInt = 0;
 			volumeLoaded = false;
 			if (volumeTexture) {
 				gl.deleteTexture(volumeTexture);
@@ -112,6 +115,7 @@ var loadRAWVolume = function(file, onload) {
 				volDims[0], volDims[1], volDims[2],
 				gl.RED, gl.UNSIGNED_BYTE, dataBuffer);
 
+			volValueRange = [0, 1];
 			volumeLoaded = true;
 			newVolumeUpload = true;
 			document.getElementById("tiffUploadBox").style = "display:block";
@@ -195,10 +199,12 @@ var renderLoop = function() {
 		gl.activeTexture(gl.TEXTURE4);
 		gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
 		shader.use();
+		gl.uniform2fv(shader.uniforms["value_range"], volValueRange);
 		gl.uniform3iv(shader.uniforms["volume_dims"], volDims);
 		gl.uniform3fv(shader.uniforms["volume_scale"], volScale);
 		gl.uniformMatrix4fv(shader.uniforms["proj_view"], false, projView);
 		gl.uniformMatrix4fv(shader.uniforms["inv_proj"], false, invProj);
+		gl.uniform1i(shader.uniforms["volume_is_int"], volumeIsInt);
 
 		var invView = mat4.invert(mat4.create(), camera.camera);
 		gl.uniformMatrix4fv(shader.uniforms["inv_view"], false, invView);
@@ -312,6 +318,7 @@ window.onload = function(){
 	shader.use();
 
 	gl.uniform1i(shader.uniforms["volume"], 0);
+	gl.uniform1i(shader.uniforms["ivolume"], 5);
 	gl.uniform1i(shader.uniforms["colormap"], 1);
 	gl.uniform1i(shader.uniforms["depth"], 4);
 	gl.uniform1f(shader.uniforms["dt_scale"], 1.0);
@@ -435,7 +442,18 @@ const TIFF_SAMPLEFORMAT_INT = 2;
 const TIFF_SAMPLEFORMAT_IEEEFP = 3;
 const TIFF_SAMPLEFORMAT_VOID = 4;
 const TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
-const TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6; 
+const TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6;
+
+var TIFFGLFormat = function(sampleFormat, bytesPerSample) {
+	if (sampleFormat === TIFF_SAMPLEFORMAT_UINT) {
+		if (bytesPerSample == 1) {
+			return gl.R8;
+		} else if (bytesPerSample == 2) {
+			return gl.R16UI
+		}
+	}
+	alert("Unsupported TIFF Format, only 8 & 16 bit uint are supported");
+}
 
 var uploadTIFF = function(files) {
 	document.getElementById("volumeName").innerHTML =
@@ -502,20 +520,25 @@ var uploadTIFF = function(files) {
 						}
 					}
 				}
-				/*
-				var minval = 512;
-				var maxval = -1;
-				for (var j = 0; j < img.length; ++j) {
-					minval = Math.min(minval, img[j]);
-					maxval = Math.max(maxval, img[j]);
-				}
-				console.log(`Value range of TIFF ${minval} to ${maxval}`);
-				*/
 
-				gl.activeTexture(gl.TEXTURE0);
-				gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
-				gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, i,
-					width, height, 1, gl.RED, gl.UNSIGNED_BYTE, img);
+				var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
+				if (glFormat == gl.R8) {
+					gl.activeTexture(gl.TEXTURE0);
+					gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+					gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, i,
+						width, height, 1, gl.RED, gl.UNSIGNED_BYTE, img);
+				} else {
+					gl.activeTexture(gl.TEXTURE5);
+					gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+					var u16arr = new Uint16Array(img);
+					for (var j = 0; j < u16arr.length; ++j) {
+						volValueRange[0] = Math.min(volValueRange[0], u16arr[j]);
+						volValueRange[1] = Math.max(volValueRange[1], u16arr[j]);
+					}
+					console.log(`Value range of TIFF ${volValueRange[0]} to ${volValueRange[1]}`);
+					gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, i,
+						width, height, 1, gl.RED_INTEGER, gl.UNSIGNED_SHORT, u16arr);
+				}
 
 				numLoaded +=1;
 				if (numLoaded == files.length) {
@@ -551,27 +574,46 @@ var uploadTIFF = function(files) {
 
 			var numStrips = TIFFNumberOfStrips(tiff);
 			var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
+			var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
 
 			console.log(`Image Format ${imgFormat}`);
 			console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
 			console.log(`img dims ${tiff.width()}x${tiff.height()}`);
-
-			var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
+			console.log(`bytes per-sample ${bytesPerSample}`);
 
 			tiff.close();
 
+			var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
 			volumeLoaded = false;
 			if (volumeTexture) {
 				gl.deleteTexture(volumeTexture);
 			}
-			gl.activeTexture(gl.TEXTURE0);
+			if (glFormat == gl.R8) {
+				gl.activeTexture(gl.TEXTURE0);
+			} else {
+				gl.activeTexture(gl.TEXTURE5);
+			}
 			volumeTexture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
-			gl.texStorage3D(gl.TEXTURE_3D, 1, gl.R8, volDims[0], volDims[1], volDims[2]);
-			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texStorage3D(gl.TEXTURE_3D, 1, glFormat, volDims[0], volDims[1], volDims[2]);
 			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
 			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+			if (glFormat == gl.R8) {
+				volumeIsInt = 0;
+				volValueRange[0] = 0;
+				volValueRange[1] = 1;
+				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			} else {
+				volumeIsInt = 1;
+				// R16 is not normalized/texture filterable so we need to normalize it
+				volValueRange[0] = Infinity;
+				volValueRange[1] = -Infinity;
+				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+			}
 			
 			for (var i = 0; i < files.length; ++i) {
 				loadFile(i);
