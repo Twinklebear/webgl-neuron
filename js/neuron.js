@@ -419,6 +419,98 @@ var fillcolormapSelector = function() {
 	}
 }
 
+// Additional functions to read single channel images extending tiff.js
+var TIFFNumberOfStrips = function(tiff) {
+	return Tiff.Module.ccall("TIFFNumberOfStrips", "number", ["number"], [tiff._tiffPtr]);
+}
+
+var TIFFStripSize = function(tiff) {
+	return Tiff.Module.ccall("TIFFStripSize", "number", ["number"], [tiff._tiffPtr]);
+}
+
+var TIFFReadEncodedStrip = function(tiff, strip, buf) {
+	return Tiff.Module.ccall("TIFFReadEncodedStrip", "number",
+		["number", "number", "number", "number"],
+		[tiff._tiffPtr, strip, buf, -1]);
+}
+
+var TIFFMalloc = function(bytes) {
+	return Tiff.Module.ccall("_TIFFmalloc", "number", ["number"], [bytes]);
+}
+
+var TIFFFree = function(buf) {
+	return Tiff.Module.ccall("_TIFFfree", "number", ["number"], [buf]);
+}
+
+var uploadTIFF = function(files) {
+	var loadFile = function(i) {
+		var file = files[i];
+		var reader = new FileReader();
+		reader.onerror = function() {
+			alert("Error reading TIFF file " + file.name);
+		};
+		reader.onload = function(evt) {
+			var buf = reader.result;
+			if (buf) {
+				var tiff = new Tiff({buffer: buf});
+				console.log(tiff);
+				console.log("tif dims: " + tiff.width() + "x" + tiff.height());
+				console.log("Field: " + tiff.getField(0));
+				console.log("rgba img: ");
+				console.log(tiff.readRGBAImage());
+				var bps = Tiff.Module.ccall("GetField", "number", ["number", "number"],
+					[tiff._tiffPtr, Tiff.Tag.BITSPERSAMPLE]);
+				console.log(`tiff bps ${bps}`);
+				console.log("bps get field " + tiff.getField(Tiff.Tag.BITSPERSAMPLE));
+
+				// We only support single channel images
+				if (tiff.getField(Tiff.Tag.SAMPLESPERPIXEL) != 1) {
+					alert("Only single channel images are supported");
+					return;
+				}
+				console.log("bps get field " + tiff.getField(Tiff.Tag.BITSPERSAMPLE));
+
+				var imgFormat = tiff.getField(Tiff.Tag.SAMPLEFORMAT);
+				console.log(`Image Format ${imgFormat}`);
+
+				var numStrips = TIFFNumberOfStrips(tiff);
+				var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
+				console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
+
+				var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
+				var img = new Uint8Array(tiff.width() * tiff.height() * bytesPerSample);
+				var sbuf = TIFFMalloc(TIFFStripSize(tiff));
+				for (var s = 0; s < numStrips; ++s) {
+					var read = TIFFReadEncodedStrip(tiff, s, sbuf);
+					if (read == -1) {
+						alert("Error reading encoded strip from TIFF file " + file);
+					}
+					console.log(read);
+					var stripData = new Uint8Array(Tiff.Module.HEAPU8.buffer.slice(sbuf, sbuf + read));
+					console.log(stripData);
+					img.set(stripData, s * rowsPerStrip * tiff.width() * bytesPerSample);
+				}
+				TIFFFree(sbuf);
+				console.log(img);
+				var minval = 512;
+				var maxval = -1;
+				for (var j = 0; j < img.length; ++j) {
+					minval = Math.min(minval, img[j]);
+					maxval = Math.max(maxval, img[j]);
+				}
+				console.log(`Value range of TIFF ${minval} to ${maxval}`);
+			} else {
+				alert("Unable to load file " + file.name);
+			}
+		};
+		reader.readAsArrayBuffer(file);
+	};
+
+	for (var i = 0; i < files.length; ++i) {
+		loadFile(i);
+	}
+}
+
 // Load up the SWC files the user gave us
 var uploadSWC = function(files) {
 	var swcList = document.getElementById("swcList");

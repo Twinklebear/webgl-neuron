@@ -42,7 +42,14 @@
 					<a href="http://diademchallenge.org/">DIADEM Challenge</a>.
 					</p>
 				</div>
-				<div class="col-12 col-lg-12 mb-lg-0 mb-2">
+				<div class="col-12 mt-2 mb-2">
+					<div class="col-12 mt-0 mb-0">
+						<input type="file" class="custom-file-input" id="uploadTIFF" accept="*.tif,*.tiff"
+								onchange="uploadTIFF(this.files);" multiple>
+						<label class="custom-file-label" for="uploadTIFF">Upload TIFF Stack</label>
+					</div>
+				</div>
+				<div class="col-12 mt-2 mb-2">
 					<h3>Traces</h3>
 					<div class="form-row">
 						<div class="col-6">
@@ -56,7 +63,7 @@
 								Show Volume</label>
 						</div>
 					</div>
-					<div class="col-lg-12 col-12 mt-2 mt-lg-0">
+					<div class="col-12 mt-2 mb-2">
 						<input type="file" class="custom-file-input" id="uploadSWC" accept="*.swc"
 								onchange="uploadSWC(this.files);" multiple>
 						<label class="custom-file-label" for="uploadSWC">Upload SWC</label>
@@ -77,11 +84,11 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-lg-12 col-12">
+				<div class="col-12">
 					<button type="button" class="btn btn-primary"
 						onclick="loadReference();">Load DIADEM Reference Traces</button>
 				</div>
-				<div class="col-12 col-lg-12 mb-lg-0 mb-2">
+				<div class="col-12 mb-2">
 					<p id="loadingText"></p>
 					<div class="progress mb-2">
 						<div id="loadingProgressBar" class="progress-bar" role="progressbar"
@@ -94,6 +101,7 @@
 		</div>
 	</div>
 	<script src="js/gl-matrix-min.js"></script>
+	<script src="js/tiff.min.js"></script>
 	<script src="js/webgl-util.js"></script>
 	<script src="js/shader-srcs.js"></script>
 	<script src="js/neuron.js"></script>
