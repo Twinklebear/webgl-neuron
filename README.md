@@ -4,6 +4,8 @@ A neuron visualization system in WebGL, [try it out online!](https://www.willush
 The volume data
 is rendered using my [WebGL volume raycaster](https://github.com/Twinklebear/webgl-volume-raycaster/).
 Neuron traces can be uploaded in the [SWC](http://research.mssm.edu/cnic/swc.html) file format.
+It can also load single-channel 8 or 16bit unsigned int TIFF images, if you want to try
+it on your own data.
 
 Uses [webgl-util](https://github.com/Twinklebear/webgl-util) for some WebGL
 utilities, [glMatrix](http://glmatrix.net/) for matrix/vector operations,
