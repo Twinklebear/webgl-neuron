@@ -236,7 +236,7 @@ var renderLoop = function() {
 	// rendering faster try increasing it to provide better quality
 	if (!newVolumeUpload) {
 		// Chrome doesn't actually wait for gl.finish to return
-		if (renderTime > 0) {
+		if (targetSamplingRate > 0.5) {
 			samplingRate = 0.9 * samplingRate + 0.1 * targetSamplingRate;
 			shader.use();
 			gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
