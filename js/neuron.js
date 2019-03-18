@@ -121,7 +121,6 @@ var loadRAWVolume = function(file, onload) {
 			document.getElementById("tiffUploadBox").style = "display:block";
 		} else {
 			alert("Unable to load buffer properly from volume?");
-			console.log("no buffer?");
 		}
 	};
 	req.send();
@@ -530,12 +529,11 @@ var uploadTIFF = function(files) {
 				} else {
 					gl.activeTexture(gl.TEXTURE5);
 					gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
-					var u16arr = new Uint16Array(img);
+					var u16arr = new Uint16Array(img.buffer);
 					for (var j = 0; j < u16arr.length; ++j) {
 						volValueRange[0] = Math.min(volValueRange[0], u16arr[j]);
 						volValueRange[1] = Math.max(volValueRange[1], u16arr[j]);
 					}
-					console.log(`Value range of TIFF ${volValueRange[0]} to ${volValueRange[1]}`);
 					gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, i,
 						width, height, 1, gl.RED_INTEGER, gl.UNSIGNED_SHORT, u16arr);
 				}
@@ -575,12 +573,6 @@ var uploadTIFF = function(files) {
 			var numStrips = TIFFNumberOfStrips(tiff);
 			var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
 			var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
-
-			console.log(`Image Format ${imgFormat}`);
-			console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
-			console.log(`img dims ${tiff.width()}x${tiff.height()}`);
-			console.log(`bytes per-sample ${bytesPerSample}`);
-
 			tiff.close();
 
 			var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
@@ -697,7 +689,6 @@ var loadReference = function() {
 		var url = "https://www.dl.dropboxusercontent.com/s/" + file + "?dl=1";
 		var req = new XMLHttpRequest();
 
-		console.log(url);
 		req.open("GET", url, true);
 		req.responseType = "text";
 		req.onerror = function(evt) {
@@ -705,7 +696,6 @@ var loadReference = function() {
 		};
 		req.onload = function(evt) {
 			var text = req.response;
-			console.log(req.responseURL);
 			if (text) {
 				var m = req.responseURL.match(swcFileRegex);
 				var swc = new SWCTree(text, m[1]);
