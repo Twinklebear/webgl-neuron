@@ -731,13 +731,16 @@ var addSWCFile = function(swc) {
 	var swcHTMLContent = `
 	<div class="col-12 mt-2 mb-2" id="swc">
 		<div class="row">
-			<div class="col-4">
+			<div class="col-3">
 				${swc.name}
 			</div>
-			<div class="col-4 text-right" id="numBranches">
+			<div class="col-3 text-right" id="numSoma">
+				${swc.numSoma}
+			</div>
+			<div class="col-3 text-right" id="numBranches">
 				${swc.branches.length}
 			</div>
-			<div class="col-4 text-right" id="numPoints">
+			<div class="col-3 text-right" id="numPoints">
 				${swc.points.length / 3}
 			</div>
 		</div>

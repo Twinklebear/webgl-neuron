@@ -4,6 +4,7 @@ var SWCTree = function(swcFile, name) {
 	this.branches = [];
 	this.indices = []
 	this.points = []
+	this.numSoma = 0;
 
 	this.vao = null;
 	this.vbo = null;
@@ -24,6 +25,7 @@ var SWCTree = function(swcFile, name) {
 		if (id == 1) {
 			branch = { "start": 0 };
 			this.indices.push(0);
+			this.numSoma = 1;
 		} else if (parentID != id - 1) {
 			branch["count"] = this.indices.length - branch["start"];
 			this.branches.push(branch);
@@ -32,6 +34,8 @@ var SWCTree = function(swcFile, name) {
 			// IDs in the file start at 1
 			if (parentID != -1) {
 				this.indices.push(parentID - 1);
+			} else {
+				this.numSoma += 1;
 			}
 			this.indices.push(this.points.length / 3);
 		} else {
