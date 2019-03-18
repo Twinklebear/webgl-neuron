@@ -6,7 +6,8 @@ is rendered using my [WebGL volume raycaster](https://github.com/Twinklebear/web
 Neuron traces can be uploaded in the [SWC](http://research.mssm.edu/cnic/swc.html) file format.
 
 Uses [webgl-util](https://github.com/Twinklebear/webgl-util) for some WebGL
-utilities and [glMatrix](http://glmatrix.net/) for matrix/vector operations.
+utilities, [glMatrix](http://glmatrix.net/) for matrix/vector operations,
+and my fork of [tiff.js](https://github.com/Twinklebear/tiff.js) to load TIFF images.
 
 ## Images
 
@@ -15,4 +16,9 @@ dataset and the provided reference traces, courtesy De Paola et al. 2006,
 from the [DIADEM Challenge](http://diademchallenge.org/).
 
 ![DIADEM NC Layer 1](https://i.imgur.com/SOBDrRD.png)
+
+The Marmoset neurons are the 16bit TIFF stack version of the dataset available
+on [OpenScivisDatasets](http://sci.utah.edu/~klacansky/cdn/open-scivis-datasets/marmoset_neurons/),
+courtesy of Fred Federer and Alessandra Angelucci.
+![Marmoset](https://i.imgur.com/bXMjno0.png)
 
