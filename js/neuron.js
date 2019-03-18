@@ -113,9 +113,11 @@ var selectVolume = function() {
 		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		/*
 		gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, 0,
 			volDims[0], volDims[1], volDims[2],
 			gl.RED, gl.UNSIGNED_BYTE, dataBuffer);
+			*/
 
 		var longestAxis = Math.max(volDims[0], Math.max(volDims[1], volDims[2]));
 		var volScale = [volDims[0] / longestAxis, volDims[1] / longestAxis,
@@ -442,6 +444,13 @@ var TIFFFree = function(buf) {
 	return Tiff.Module.ccall("_TIFFfree", "number", ["number"], [buf]);
 }
 
+const var TIFF_SAMPLEFORMAT_UINT = 1;
+const var TIFF_SAMPLEFORMAT_INT = 2;
+const var TIFF_SAMPLEFORMAT_IEEEFP = 3;
+const var TIFF_SAMPLEFORMAT_VOID = 4;
+const var TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
+const var TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6; 
+
 var uploadTIFF = function(files) {
 	var loadFile = function(i) {
 		var file = files[i];
@@ -453,45 +462,53 @@ var uploadTIFF = function(files) {
 			var buf = reader.result;
 			if (buf) {
 				var tiff = new Tiff({buffer: buf});
-				console.log(tiff);
-				console.log("tif dims: " + tiff.width() + "x" + tiff.height());
-				console.log("Field: " + tiff.getField(0));
-				console.log("rgba img: ");
-				console.log(tiff.readRGBAImage());
 				var bps = Tiff.Module.ccall("GetField", "number", ["number", "number"],
 					[tiff._tiffPtr, Tiff.Tag.BITSPERSAMPLE]);
-				console.log(`tiff bps ${bps}`);
-				console.log("bps get field " + tiff.getField(Tiff.Tag.BITSPERSAMPLE));
 
 				// We only support single channel images
 				if (tiff.getField(Tiff.Tag.SAMPLESPERPIXEL) != 1) {
 					alert("Only single channel images are supported");
 					return;
 				}
-				console.log("bps get field " + tiff.getField(Tiff.Tag.BITSPERSAMPLE));
 
 				var imgFormat = tiff.getField(Tiff.Tag.SAMPLEFORMAT);
-				console.log(`Image Format ${imgFormat}`);
+
+				var width = tiff.width();
+				var height = tiff.height();
 
 				var numStrips = TIFFNumberOfStrips(tiff);
 				var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
-				console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
+
+				if (i == 0) {
+					console.log(`Image Format ${imgFormat}`);
+					console.log(`num strips ${numStrips}, rowsPerStrip ${rowsPerStrip}`);
+				}
 
 				var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
-				var img = new Uint8Array(tiff.width() * tiff.height() * bytesPerSample);
+				var img = new Uint8Array(width * height * bytesPerSample);
 				var sbuf = TIFFMalloc(TIFFStripSize(tiff));
 				for (var s = 0; s < numStrips; ++s) {
 					var read = TIFFReadEncodedStrip(tiff, s, sbuf);
 					if (read == -1) {
 						alert("Error reading encoded strip from TIFF file " + file);
 					}
-					console.log(read);
 					var stripData = new Uint8Array(Tiff.Module.HEAPU8.buffer.slice(sbuf, sbuf + read));
-					console.log(stripData);
-					img.set(stripData, s * rowsPerStrip * tiff.width() * bytesPerSample);
+					img.set(stripData, s * rowsPerStrip * width * bytesPerSample);
 				}
 				TIFFFree(sbuf);
-				console.log(img);
+				tiff.close();
+
+				// Flip the image in Y, since TIFF y axis is downwards
+				for (var y = 0; y < height / 2; ++y) {
+					for (var x = 0; x < width; ++x) {
+						for (var b = 0; b < bytesPerSample; ++b) {
+							var tmp = img[(y * width + x) * bytesPerSample];
+							img[(y * width + x) * bytesPerSample] = img[((height - y - 1) * width + x) * bytesPerSample];
+							img[((height - y - 1) * width + x) * bytesPerSample] = tmp;
+						}
+					}
+				}
+				/*
 				var minval = 512;
 				var maxval = -1;
 				for (var j = 0; j < img.length; ++j) {
@@ -499,6 +516,15 @@ var uploadTIFF = function(files) {
 					maxval = Math.max(maxval, img[j]);
 				}
 				console.log(`Value range of TIFF ${minval} to ${maxval}`);
+				*/
+
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+				// TODO here I know what the dims are that I'm loading since it's the same dataset
+				// but without this, we have to load one file to get the x/y dims and then
+				// can call texstorage
+				gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, i,
+					width, height, 1, gl.RED, gl.UNSIGNED_BYTE, img);
 			} else {
 				alert("Unable to load file " + file.name);
 			}
