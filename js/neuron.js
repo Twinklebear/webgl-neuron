@@ -232,10 +232,10 @@ var renderLoop = function() {
 	var renderTime = endTime - startTime;
 	var targetSamplingRate = renderTime / targetFrameTime;
 
-	// If we're dropping frames, decrease the sampling rate
-	// TODO: If we're faster than we planned, try increasing it a bit
-	if (!newVolumeUpload && targetSamplingRate > samplingRate) {
-		samplingRate = 0.8 * samplingRate + 0.2 * targetSamplingRate;
+	// If we're dropping frames, decrease the sampling rate, or if we're
+	// rendering faster try increasing it to provide better quality
+	if (!newVolumeUpload) {
+		samplingRate = 0.9 * samplingRate + 0.1 * targetSamplingRate;
 		shader.use();
 		gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
 	}
@@ -515,7 +515,8 @@ var uploadTIFF = function(files) {
 					for (var x = 0; x < width; ++x) {
 						for (var b = 0; b < bytesPerSample; ++b) {
 							var tmp = img[(y * width + x) * bytesPerSample];
-							img[(y * width + x) * bytesPerSample] = img[((height - y - 1) * width + x) * bytesPerSample];
+							img[(y * width + x) * bytesPerSample] =
+								img[((height - y - 1) * width + x) * bytesPerSample];
 							img[((height - y - 1) * width + x) * bytesPerSample] = tmp;
 						}
 					}
@@ -539,7 +540,7 @@ var uploadTIFF = function(files) {
 						width, height, 1, gl.RED_INTEGER, gl.UNSIGNED_SHORT, u16arr);
 				}
 
-				numLoaded +=1;
+				numLoaded += 1;
 				if (numLoaded == files.length) {
 					volumeLoaded = true;
 					newVolumeUpload = true;
@@ -548,6 +549,9 @@ var uploadTIFF = function(files) {
 				} else {
 					var percent = numLoaded / files.length * 100;
 					loadingProgressBar.setAttribute("style", "width: " + percent.toFixed(2) + "%");
+					// We serialize the loading somewhat to not overload the browser when
+					// trying to upload a lot of files
+					loadFile(i + 1);
 				}
 			} else {
 				alert("Unable to load file " + file.name);
@@ -613,9 +617,7 @@ var uploadTIFF = function(files) {
 				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			}
 			
-			for (var i = 0; i < files.length; ++i) {
-				loadFile(i);
-			}
+			loadFile(0);
 		} else {
 			alert("Unable to load file " + file.name);
 		}
