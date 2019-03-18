@@ -52,7 +52,8 @@
 					16bit images may appear pixelated, as WebGL2 does not support filtering on these textures.
 					</p>
 					<div class="col-12 mt-0 mb-0">
-						<input type="file" class="custom-file-input" id="uploadTIFF" accept="*.tif,*.tiff"
+						<input type="file" class="custom-file-input" id="uploadTIFF"
+								accept=".tif,.tiff,.TIF,.TIFF"
 								onchange="uploadTIFF(this.files);" multiple>
 						<label class="custom-file-label" for="uploadTIFF">Upload TIFF Stack</label>
 					</div>
@@ -72,7 +73,7 @@
 						</div>
 					</div>
 					<div class="col-12 mt-2 mb-2">
-						<input type="file" class="custom-file-input" id="uploadSWC" accept="*.swc"
+						<input type="file" class="custom-file-input" id="uploadSWC" accept=".swc"
 								onchange="uploadSWC(this.files);" multiple>
 						<label class="custom-file-label" for="uploadSWC">Upload SWC</label>
 					</div>
