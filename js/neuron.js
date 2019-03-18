@@ -370,14 +370,6 @@ window.onload = function(){
 		gl.TEXTURE_2D, renderTargets[0], 0);
 	gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 
-	// See if we were linked to a datset
-	if (window.location.hash) {
-		var linkedDataset = decodeURI(window.location.hash.substr(1));
-		if (linkedDataset in volumes) {
-			document.getElementById("volumeList").value = linkedDataset;
-		}
-	}
-
 	// Load the default colormap and upload it, after which we
 	// load the default volume.
 	var colormapImage = new Image();
