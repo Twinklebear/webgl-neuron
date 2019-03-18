@@ -503,7 +503,8 @@ var uploadTIFF = function(files) {
 					if (read == -1) {
 						alert("Error reading encoded strip from TIFF file " + file);
 					}
-					var stripData = new Uint8Array(Tiff.Module.HEAPU8.buffer.slice(sbuf, sbuf + read));
+					// Just make a view into the heap, not a copy
+					var stripData = new Uint8Array(Tiff.Module.HEAPU8.buffer, sbuf, read);
 					img.set(stripData, s * rowsPerStrip * width * bytesPerSample);
 				}
 				TIFFFree(sbuf);
@@ -542,6 +543,11 @@ var uploadTIFF = function(files) {
 				if (numLoaded == files.length) {
 					volumeLoaded = true;
 					newVolumeUpload = true;
+					loadingProgressText.innerHTML = "Loaded Volume";
+					loadingProgressBar.setAttribute("style", "width: 101%");
+				} else {
+					var percent = numLoaded / files.length * 100;
+					loadingProgressBar.setAttribute("style", "width: " + percent.toFixed(2) + "%");
 				}
 			} else {
 				alert("Unable to load file " + file.name);
