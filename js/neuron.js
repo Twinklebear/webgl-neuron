@@ -444,14 +444,15 @@ var TIFFFree = function(buf) {
 	return Tiff.Module.ccall("_TIFFfree", "number", ["number"], [buf]);
 }
 
-const var TIFF_SAMPLEFORMAT_UINT = 1;
-const var TIFF_SAMPLEFORMAT_INT = 2;
-const var TIFF_SAMPLEFORMAT_IEEEFP = 3;
-const var TIFF_SAMPLEFORMAT_VOID = 4;
-const var TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
-const var TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6; 
+const TIFF_SAMPLEFORMAT_UINT = 1;
+const TIFF_SAMPLEFORMAT_INT = 2;
+const TIFF_SAMPLEFORMAT_IEEEFP = 3;
+const TIFF_SAMPLEFORMAT_VOID = 4;
+const TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
+const TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6; 
 
 var uploadTIFF = function(files) {
+	console.log(files);
 	var loadFile = function(i) {
 		var file = files[i];
 		var reader = new FileReader();
