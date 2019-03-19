@@ -731,7 +731,7 @@ var addSWCFile = function(swc) {
 	var swcHTMLContent = `
 	<div class="col-12 mt-2 mb-2" id="swc">
 		<div class="row">
-			<div class="col-3">
+			<div class="col-3" style="overflow-wrap:break-word;">
 				${swc.name}
 			</div>
 			<div class="col-3 text-right" id="numSoma">
