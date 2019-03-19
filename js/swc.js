@@ -10,9 +10,14 @@ var SWCTree = function(swcFile, name) {
 	this.vbo = null;
 	this.ebo = null;
 
-	var branch = {}
+	var branch = null;
 	var lines = swcFile.split("\n");
 	for (var i = 0; i < lines.length; ++i) {
+		if (lines[i].length == 0 && branch != null) {
+			this.branches.push(branch);
+			branch = null;
+			continue;
+		}
 		if (lines[i][0] == "#") {
 			continue;
 		}
@@ -26,7 +31,7 @@ var SWCTree = function(swcFile, name) {
 			branch = { "start": 0 };
 			this.indices.push(0);
 			this.numSoma = 1;
-		} else if (parentID != id - 1) {
+		} else if (parentID != id - 1 || parentID == -1) {
 			branch["count"] = this.indices.length - branch["start"];
 			this.branches.push(branch);
 
@@ -45,6 +50,8 @@ var SWCTree = function(swcFile, name) {
 		this.points.push(y);
 		this.points.push(z);
 	}
-	this.branches.push(branch);
+	if (branch) {
+		this.branches.push(branch);
+	}
 }
 
