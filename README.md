@@ -23,5 +23,5 @@ The Marmoset neurons are the 16bit TIFF stack version of the dataset available
 on [OpenScivisDatasets](http://sci.utah.edu/~klacansky/cdn/open-scivis-datasets/marmoset_neurons/),
 courtesy of Fred Federer and Alessandra Angelucci.
 
-![Marmoset](https://i.imgur.com/bXMjno0.png)
+![Marmoset](https://i.imgur.com/lwlbLCw.png)
 
