@@ -286,8 +286,6 @@ window.onload = function(){
 		var m = resolutionString.match(regexResolution);
 		WIDTH = parseInt(m[1]);
 		HEIGHT = parseInt(m[2]);
-		console.log(m);
-		console.log(`Got new dims ${WIDTH}x${HEIGHT}`);
 		canvas.width = WIDTH;
 		canvas.height = HEIGHT;
 		canvas.className = "";
