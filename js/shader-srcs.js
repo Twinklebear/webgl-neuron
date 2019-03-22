@@ -121,8 +121,10 @@ void main(void) {
 		val = (val - value_range.x) / (value_range.y - value_range.x);
 
 		if (val >= threshold) {
-			val = (val - threshold) / (1.0 - threshold);
+			val = clamp((val - threshold) / (1.0 - threshold), 0.0, 1.0);
 			vec4 val_color = vec4(texture(colormap, vec2(val, 0.5)).rgb, val);
+			// Opacity correction
+			val_color.a = 1.0 - pow(1.0 - val_color.a, dt_scale);
 			color.rgb += (1.0 - color.a) * val_color.a * val_color.rgb;
 			color.a += (1.0 - color.a) * val_color.a;
 			if (color.a >= 0.95) {
