@@ -15,7 +15,10 @@ var cubeStrip = [
 	0, 0, 0
 ];
 
+var takeScreenShot = false;
+
 var gl = null;
+var canvas = null;
 
 var neurons = [];
 var swcShader = null;
@@ -235,6 +238,11 @@ var renderLoop = function() {
 	var renderTime = endTime - startTime;
 	var targetSamplingRate = renderTime / targetFrameTime;
 
+	if (takeScreenShot) {
+		takeScreenShot = false;
+		canvas.toBlob(function(b) { saveAs(b, "screen.png"); }, "image/png");
+	}
+
 	// If we're dropping frames, decrease the sampling rate, or if we're
 	// rendering faster try increasing it to provide better quality
 	if (!newVolumeUpload) {
@@ -270,7 +278,21 @@ window.onload = function(){
 	volumeThreshold = document.getElementById("threshold");
 	volumeThreshold.value = 0.1;
 
-	var canvas = document.getElementById("glcanvas");
+	canvas = document.getElementById("glcanvas");
+
+	if (window.location.hash) {
+		var regexResolution = /(\d+)x(\d+)/;
+		var resolutionString = decodeURI(window.location.hash.substr(1));
+		var m = resolutionString.match(regexResolution);
+		WIDTH = parseInt(m[1]);
+		HEIGHT = parseInt(m[2]);
+		console.log(m);
+		console.log(`Got new dims ${WIDTH}x${HEIGHT}`);
+		canvas.width = WIDTH;
+		canvas.height = HEIGHT;
+		canvas.className = "";
+	}
+
 	gl = canvas.getContext("webgl2");
 	if (!gl) {
 		alert("Unable to initialize WebGL2. Your browser may not support it");
@@ -300,6 +322,12 @@ window.onload = function(){
 	controller.pinch = controller.wheel;
 	controller.twoFingerDrag = function(drag) { camera.pan(drag); };
 
+	document.addEventListener("keydown", function(evt) {
+		if (evt.key == "p") {
+			takeScreenShot = true;
+		}
+	});
+
 	controller.registerForCanvas(canvas);
 
 	// Setup VAO and VBO to render the cube to run the raymarching shader
@@ -327,6 +355,7 @@ window.onload = function(){
 	gl.uniform1i(shader.uniforms["colormap"], 1);
 	gl.uniform1i(shader.uniforms["depth"], 4);
 	gl.uniform1f(shader.uniforms["dt_scale"], 1.0);
+	gl.uniform2iv(shader.uniforms["canvas_dims"], [WIDTH, HEIGHT]);
 
 	// Setup required OpenGL state for drawing the back faces and
 	// composting with the background color

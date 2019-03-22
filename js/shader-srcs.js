@@ -37,6 +37,7 @@ uniform mat4 inv_view;
 uniform int highlight_trace;
 uniform float threshold;
 uniform int volume_is_int;
+uniform ivec2 canvas_dims;
 
 in vec3 vray_dir;
 flat in vec3 transformed_eye;
@@ -76,7 +77,8 @@ float linearize(float d) {
 
 // Reconstruct the view-space position
 vec4 compute_view_pos(float z) {
-	vec4 pos = vec4(gl_FragCoord.xy / vec2(640, 480) * 2.f - 1.f, z, 1.f);
+	// TODO: We don't really care about the full view position here
+	vec4 pos = vec4(gl_FragCoord.xy / vec2(canvas_dims) * 2.f - 1.f, z, 1.f);
 	pos = inv_proj * pos;
 	return pos / pos.w;
 }
@@ -107,7 +109,7 @@ void main(void) {
 
 	vec3 dt_vec = 1.0 / (vec3(volume_dims) * abs(ray_dir));
 	float dt = dt_scale * min(dt_vec.x, min(dt_vec.y, dt_vec.z));
-	float offset = wang_hash(int(gl_FragCoord.x + 640.0 * gl_FragCoord.y));
+	float offset = wang_hash(int(gl_FragCoord.x + float(canvas_dims.x) * gl_FragCoord.y));
 	vec3 p = transformed_eye + (t_hit.x + offset * dt) * ray_dir;
 	for (float t = t_hit.x; t < t_hit.y; t += dt) {
 		float val = 0.0;
