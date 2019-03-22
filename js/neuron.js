@@ -48,7 +48,10 @@ var targetFrameTime = 32;
 var samplingRate = 1.0;
 var WIDTH = 640;
 var HEIGHT = 480;
+
+const defaultEye = vec3.set(vec3.create(), 0.5, 0.5, 1.5);
 const center = vec3.set(vec3.create(), 0.5, 0.5, 0.5);
+const up = vec3.set(vec3.create(), 0.0, 1.0, 0.0);
 
 var volumes = {
 	"DIADEM NC Layer 1 Axons": "/04imux1qxpkilix/neocortical_layer_1_axons_1464x1033x76_uint8.raw",
@@ -134,7 +137,7 @@ var renderLoop = function() {
 
 	// Reset the sampling rate and camera for new volumes
 	if (newVolumeUpload) {
-		camera = new ArcballCamera(center, 2, [WIDTH, HEIGHT]);
+		camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
 		samplingRate = 1.0;
 		shader.use();
 		gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
@@ -181,7 +184,7 @@ var renderLoop = function() {
 				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(swc.indices), gl.STATIC_DRAW);
 			}
 
-			var color = hexToRGB(swc.color.value);
+			var color = hexToRGBf(swc.color.value);
 			gl.uniform3fv(swcShader.uniforms["swc_color"], color);
 
 			// Draw the SWC file
@@ -280,7 +283,7 @@ window.onload = function(){
 		WIDTH / HEIGHT, 0.1, 100);
 	invProj = mat4.invert(mat4.create(), proj);
 
-	camera = new ArcballCamera(center, 2, [WIDTH, HEIGHT]);
+	camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
 	projView = mat4.create();
 
 	// Register mouse and touch listeners
@@ -388,14 +391,6 @@ window.onload = function(){
 		setInterval(renderLoop, targetFrameTime);
 	};
 	colormapImage.src = "colormaps/grayscale.png";
-}
-
-var hexToRGB = function(hex) {
-	var val = parseInt(hex.substr(1), 16);
-	var r = (val >> 16) & 255;
-	var g = (val >> 8) & 255;
-	var b = val & 255;
-	return [r / 255.0, g / 255.0, b / 255.0];
 }
 
 var fillcolormapSelector = function() {
