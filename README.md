@@ -17,7 +17,7 @@ Displaying the [DIADEM NC Layer 1 Axons](http://diademchallenge.org/neocortical_
 dataset and the provided reference traces, courtesy De Paola et al. 2006,
 from the [DIADEM Challenge](http://diademchallenge.org/).
 
-![DIADEM NC Layer 1](https://i.imgur.com/SOBDrRD.png)
+![DIADEM NC Layer 1](https://i.imgur.com/9vVRCLE.png)
 
 The Marmoset neurons are the 16bit TIFF stack version of the dataset available
 on [OpenScivisDatasets](http://sci.utah.edu/~klacansky/cdn/open-scivis-datasets/marmoset_neurons/),
