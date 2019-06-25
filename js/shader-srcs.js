@@ -138,13 +138,18 @@ void main(void) {
 var swcVertShader =
 `#version 300 es
 #line 127
-layout(location=0) in vec3 pos;
+//layout(location=0) in vec3 pos;
 
 uniform mat4 proj_view;
 uniform vec3 volume_scale;
 uniform ivec3 volume_dims;
 
+uniform highp usampler2D indices;
+uniform sampler2D verts;
+
 void main(void) {
+	uint idx = texelFetch(indices, ivec2(gl_InstanceID * 2 + gl_VertexID, 0), 0).x;
+	vec3 pos = texelFetch(verts, ivec2(idx, 0), 0).xyz;
 	vec3 volume_translation = vec3(0.5) - volume_scale * 0.5;
 	gl_Position = proj_view * vec4((pos / vec3(volume_dims)) * volume_scale + volume_translation, 1);
 }`;

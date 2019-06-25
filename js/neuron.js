@@ -164,6 +164,8 @@ var renderLoop = function() {
 		gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
 		gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
 		gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
+		gl.uniform1i(swcShader.uniforms["indices"], 6);
+		gl.uniform1i(swcShader.uniforms["verts"], 7);
 
 		for (var i = 0; i < neurons.length; ++i) {
 			var swc = neurons[i];
@@ -176,6 +178,7 @@ var renderLoop = function() {
 				swc.vao = gl.createVertexArray();
 				gl.bindVertexArray(swc.vao);
 
+				/*
 				swc.vbo = gl.createBuffer();
 				gl.bindBuffer(gl.ARRAY_BUFFER, swc.vbo);
 				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(swc.points), gl.STATIC_DRAW);
@@ -185,17 +188,47 @@ var renderLoop = function() {
 				swc.ebo = gl.createBuffer();
 				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, swc.ebo);
 				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(swc.indices), gl.STATIC_DRAW);
+				*/
+				swc.vbo = gl.createTexture();
+				gl.activeTexture(gl.TEXTURE6);
+				gl.bindTexture(gl.TEXTURE_2D, swc.vbo);
+				gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGB32F, swc.points.length / 3, 1);
+				gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, swc.points.length / 3, 1,
+					gl.RGB, gl.FLOAT, new Float32Array(swc.points));
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+				swc.ebo = gl.createTexture();
+				gl.bindTexture(gl.TEXTURE_2D, swc.ebo);
+				gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R16UI, swc.indices.length, 1);
+				gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, swc.indices.length, 1,
+					gl.RED_INTEGER, gl.UNSIGNED_SHORT, new Uint16Array(swc.indices));
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			}
 
 			var color = hexToRGBf(swc.color.value);
 			gl.uniform3fv(swcShader.uniforms["swc_color"], color);
 
+			gl.activeTexture(gl.TEXTURE6);
+			gl.bindTexture(gl.TEXTURE_2D, swc.ebo);
+			gl.activeTexture(gl.TEXTURE7);
+			gl.bindTexture(gl.TEXTURE_2D, swc.vbo);
+
 			// Draw the SWC file
 			gl.bindVertexArray(swc.vao);
+			var b = swc.branches[0];
+			gl.drawArraysInstanced(gl.LINES, 0, 2, b["count"]);
+			/*
 			for (var j = 0; j < swc.branches.length; ++j) {
 				var b = swc.branches[j];
 				gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
 			}
+			*/
 		}
 	}
 
