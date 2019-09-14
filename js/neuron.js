@@ -142,7 +142,7 @@ var renderLoop = function() {
 	if (newVolumeUpload) {
 		camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
 		samplingRate = 1.0;
-		shader.use();
+		shader.use(gl);
 		gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
 	}
 
@@ -160,7 +160,7 @@ var renderLoop = function() {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	gl.enable(gl.DEPTH_TEST);
 	if (neurons.length > 0) {
-		swcShader.use();
+		swcShader.use(gl);
 		gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
 		gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
 		gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
@@ -203,7 +203,7 @@ var renderLoop = function() {
 	if (volumeLoaded && showVolume.checked) {
 		gl.activeTexture(gl.TEXTURE4);
 		gl.bindTexture(gl.TEXTURE_2D, renderTargets[1]);
-		shader.use();
+		shader.use(gl);
 		gl.uniform2fv(shader.uniforms["value_range"], volValueRange);
 		gl.uniform3iv(shader.uniforms["volume_dims"], volDims);
 		gl.uniform3fv(shader.uniforms["volume_scale"], volScale);
@@ -227,7 +227,7 @@ var renderLoop = function() {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	gl.disable(gl.BLEND);
 	gl.disable(gl.CULL_FACE);
-	blitImageShader.use();
+	blitImageShader.use(gl);
 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 	gl.enable(gl.CULL_FACE);
 	gl.enable(gl.BLEND);
@@ -249,7 +249,7 @@ var renderLoop = function() {
 		// Chrome doesn't actually wait for gl.finish to return
 		if (targetSamplingRate > 0.8) {
 			samplingRate = 0.9 * samplingRate + 0.1 * targetSamplingRate;
-			shader.use();
+			shader.use(gl);
 			gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
 		}
 	}
@@ -339,14 +339,14 @@ window.onload = function(){
 	gl.enableVertexAttribArray(0);
 	gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
-	blitImageShader = new Shader(quadVertShader, quadFragShader);
-	blitImageShader.use();
+	blitImageShader = new Shader(gl, quadVertShader, quadFragShader);
+	blitImageShader.use(gl);
 	gl.uniform1i(blitImageShader.uniforms["colors"], 3);
 
-	swcShader = new Shader(swcVertShader, swcFragShader);
+	swcShader = new Shader(gl, swcVertShader, swcFragShader);
 
-	shader = new Shader(vertShader, fragShader);
-	shader.use();
+	shader = new Shader(gl, vertShader, fragShader);
+	shader.use(gl);
 
 	gl.uniform1i(shader.uniforms["volume"], 0);
 	gl.uniform1i(shader.uniforms["ivolume"], 5);
