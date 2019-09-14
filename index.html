@@ -14,6 +14,7 @@
 	<div class="container mt-4">
 		<div class="row">
 			<div class="col-12 text-center">
+                <h3>WebGL Neuron Viewer</h3>
 				<canvas id="glcanvas" class="img-fluid" width="640" height="480"></canvas>
 			</div>
 			<div class="mx-auto col-12 col-lg-8 row">
@@ -31,17 +32,19 @@
 				</div>
 
 				<div class="col-12 col-lg-12 mt-2 mb-2">
-					<h3>Controls</h3>
-					<p>Mouse Controls: Left-click + drag to rotate, scroll to zoom, right-click + drag to pan.
+					<h4>Controls</h4>
+					<p>Desktop: Left-click + drag to rotate, scroll to zoom,
+					right-click + drag to pan.
 					<br/>
-					Touch Controls: One finger drag to rotate, pinch to zoom, two finger drag to pan.
-					<br />
-					The DIADEM NC Layer 1 Axons and reference traces are the
+					Touch: One finger drag to rotate, pinch to zoom, two finger drag to pan.
+
+                    <h4>Description</h4>
+                    This is a WebGL viewer for <a href="https://en.wikipedia.org/wiki/Connectomics">Connectomics</a>
+                    data, and can render both the microscopy acquired image volume in combination with a set
+                    of neuron traces. The DIADEM NC Layer 1 Axons and reference traces are the
 					<a href="http://diademchallenge.org/neocortical_layer_1_axons_readme.html">NC Layer 1
 						Axons</a> dataset, courtesy De Paola et al. 2006, included as part of the
 					<a href="http://diademchallenge.org/">DIADEM Challenge</a>.
-					</p>
-					<p>
 					<a href="https://github.com/Twinklebear/webgl-neuron">
 						Get the code on GitHub!</a>
 					</p>
