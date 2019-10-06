@@ -284,6 +284,7 @@ window.onload = function() {
 
     // For some random JS/HTML reason it won't find the function if it's not set here
     document.getElementById("fetchTIFFButton").onclick = fetchTIFF;
+    document.getElementById("uploadSWC").onchange = uploadSWC;
 
     var volumeURL = null;
     if (window.location.hash) {
@@ -756,7 +757,8 @@ var fetchTIFFURL = function(url) {
 }
 
 // Load up the SWC files the user gave us
-var uploadSWC = function(files) {
+var uploadSWC = function() {
+    var files = document.getElementById("uploadSWC").files;
     var swcList = document.getElementById("swcList");
     // Javascript is a mess...
     var loadFile = function(i) {
