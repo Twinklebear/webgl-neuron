@@ -430,38 +430,8 @@ var fillcolormapSelector = function() {
 	}
 }
 
-// Additional functions to read single channel images extending tiff.js
-var TIFFNumberOfStrips = function(tiff) {
-	return Tiff.Module.ccall("TIFFNumberOfStrips", "number", ["number"], [tiff._tiffPtr]);
-}
-
-var TIFFStripSize = function(tiff) {
-	return Tiff.Module.ccall("TIFFStripSize", "number", ["number"], [tiff._tiffPtr]);
-}
-
-var TIFFReadEncodedStrip = function(tiff, strip, buf) {
-	return Tiff.Module.ccall("TIFFReadEncodedStrip", "number",
-		["number", "number", "number", "number"],
-		[tiff._tiffPtr, strip, buf, -1]);
-}
-
-var TIFFMalloc = function(bytes) {
-	return Tiff.Module.ccall("_TIFFmalloc", "number", ["number"], [bytes]);
-}
-
-var TIFFFree = function(buf) {
-	return Tiff.Module.ccall("_TIFFfree", "number", ["number"], [buf]);
-}
-
-const TIFF_SAMPLEFORMAT_UINT = 1;
-const TIFF_SAMPLEFORMAT_INT = 2;
-const TIFF_SAMPLEFORMAT_IEEEFP = 3;
-const TIFF_SAMPLEFORMAT_VOID = 4;
-const TIFF_SAMPLEFORMAT_COMPLEXINT = 5;
-const TIFF_SAMPLEFORMAT_COMPLEXIEEEFP = 6;
-
 var TIFFGLFormat = function(sampleFormat, bytesPerSample) {
-	if (sampleFormat === TIFF_SAMPLEFORMAT_UINT) {
+	if (sampleFormat === TiffSampleFormat.UINT || sampleFormat == TiffSampleFormat.UNSPECIFIED) {
 		if (bytesPerSample == 1) {
 			return gl.R8;
 		} else if (bytesPerSample == 2) {
@@ -494,38 +464,42 @@ var uploadTIFF = function(files) {
 		reader.onload = function(evt) {
 			var buf = reader.result;
 			if (buf) {
-				var tiff = new Tiff({buffer: buf});
-				var bps = Tiff.Module.ccall("GetField", "number", ["number", "number"],
-					[tiff._tiffPtr, Tiff.Tag.BITSPERSAMPLE]);
+                var fname = "temp" + i + ".tiff";
+                FS.createDataFile("/", fname, new Uint8Array(reader.result), true, false);
+
+				var tiff = TIFFOpen(fname, "r");
+				var bps = GetField(tiff, TiffTag.BITSPERSAMPLE);
 
 				// We only support single channel images
-				if (tiff.getField(Tiff.Tag.SAMPLESPERPIXEL) != 1) {
+				if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
 					alert("Only single channel images are supported");
 					return;
 				}
 
-				var imgFormat = tiff.getField(Tiff.Tag.SAMPLEFORMAT);
+				var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
 
-				var width = tiff.width();
-				var height = tiff.height();
+                var width = GetField(tiff, TiffTag.IMAGEWIDTH);
+                var height = GetField(tiff, TiffTag.IMAGELENGTH);
 
 				var numStrips = TIFFNumberOfStrips(tiff);
-				var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
+				var rowsPerStrip = GetField(tiff, TiffTag.ROWSPERSTRIP);
 
-				var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
+				var bytesPerSample = GetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+
 				var img = new Uint8Array(width * height * bytesPerSample);
 				var sbuf = TIFFMalloc(TIFFStripSize(tiff));
 				for (var s = 0; s < numStrips; ++s) {
-					var read = TIFFReadEncodedStrip(tiff, s, sbuf);
+					var read = TIFFReadEncodedStrip(tiff, s, sbuf, -1);
 					if (read == -1) {
 						alert("Error reading encoded strip from TIFF file " + file);
 					}
 					// Just make a view into the heap, not a copy
-					var stripData = new Uint8Array(Tiff.Module.HEAPU8.buffer, sbuf, read);
+					var stripData = new Uint8Array(Module.HEAPU8.buffer, sbuf, read);
 					img.set(stripData, s * rowsPerStrip * width * bytesPerSample);
 				}
 				TIFFFree(sbuf);
-				tiff.close();
+				TIFFClose(tiff);
+                FS.unlink("/" + fname);
 
 				// Flip the image in Y, since TIFF y axis is downwards
 				for (var y = 0; y < height / 2; ++y) {
@@ -585,22 +559,34 @@ var uploadTIFF = function(files) {
 	reader.onload = function(evt) {
 		var buf = reader.result;
 		if (buf) {
-			var tiff = new Tiff({buffer: buf});
+            FS.createDataFile("/", "temp_test.tiff", new Uint8Array(reader.result), true, false);
+            var tiff = TIFFOpen("temp_test.tiff", "r");
+
+            var numDirectories = 0;
+            if (GetField(tiff, TiffTag.SUBFILETYPE) == 2) {
+                do {
+                    ++numDirectories;
+                } while (TIFFReadDirectory(tiff));
+
+                console.log("TIFF has " + numDirectories + " dirs");
+                // TODO: Should take a separate importing path in this case
+                TIFFSetDirectory(tiff, 0);
+            }
 
 			// We only support single channel images
-			if (tiff.getField(Tiff.Tag.SAMPLESPERPIXEL) != 1) {
+			if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
 				alert("Only single channel images are supported");
 				return;
 			}
 
-			var imgFormat = tiff.getField(Tiff.Tag.SAMPLEFORMAT);
-
-			volDims = [tiff.width(), tiff.height(), files.length]
-
-			var numStrips = TIFFNumberOfStrips(tiff);
-			var rowsPerStrip = tiff.getField(Tiff.Tag.ROWSPERSTRIP);
-			var bytesPerSample = tiff.getField(Tiff.Tag.BITSPERSAMPLE) / 8;
-			tiff.close();
+			var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
+            var width = GetField(tiff, TiffTag.IMAGEWIDTH);
+            var height = GetField(tiff, TiffTag.IMAGELENGTH);
+			volDims = [width, height, 0];
+            if (numDirectories != 0) {
+                volDims[2] = numDirectories;
+            } else {
+                volDims[2] = files.length;
 
 			var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
 			volumeLoaded = false;
@@ -634,7 +620,15 @@ var uploadTIFF = function(files) {
 				gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			}
 			
-			loadFile(0);
+            if (numDirectories == 0) {
+                TIFFClose(tiff);
+                FS.unlink("/temp_test.tiff");
+                loadFile(0);
+            } else {
+                loadMultipageTiff(tiff);
+                TIFFClose(tiff);
+                FS.unlink("/temp_test.tiff");
+            }
 		} else {
 			alert("Unable to load file " + file.name);
 		}
