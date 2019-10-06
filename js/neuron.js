@@ -15,8 +15,6 @@ var cubeStrip = [
     0, 0, 0
 ];
 
-var takeScreenShot = false;
-
 var gl = null;
 var canvas = null;
 
@@ -239,11 +237,6 @@ var renderLoop = function() {
     var renderTime = endTime - startTime;
     var targetSamplingRate = renderTime / targetFrameTime;
 
-    if (takeScreenShot) {
-        takeScreenShot = false;
-        canvas.toBlob(function(b) { saveAs(b, "screen.png"); }, "image/png");
-    }
-
     // If we're dropping frames, decrease the sampling rate, or if we're
     // rendering faster try increasing it to provide better quality
     if (!newVolumeUpload) {
@@ -284,6 +277,9 @@ window.onload = function(){
 
     canvas = document.getElementById("glcanvas");
 
+    // For some random JS/HTML reason it won't find the function if it's not set here
+    document.getElementById("fetchTIFFButton").onclick = fetchTIFF;
+
     if (window.location.hash) {
         var regexResolution = /(\d+)x(\d+)/;
         var resolutionString = decodeURI(window.location.hash.substr(1));
@@ -323,12 +319,6 @@ window.onload = function(){
     controller.wheel = function(amt) { camera.zoom(amt); };
     controller.pinch = controller.wheel;
     controller.twoFingerDrag = function(drag) { camera.pan(drag); };
-
-    document.addEventListener("keydown", function(evt) {
-        if (evt.key == "p") {
-            takeScreenShot = true;
-        }
-    });
 
     controller.registerForCanvas(canvas);
 
@@ -447,6 +437,45 @@ var TIFFGLFormat = function(sampleFormat, bytesPerSample) {
         }
     }
     alert("Unsupported TIFF Format, only 8 & 16 bit uint are supported");
+}
+
+var makeTIFFGLVolume = function(tiff) {
+    var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
+    var bytesPerSample = GetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+    var width = GetField(tiff, TiffTag.IMAGEWIDTH);
+    var height = GetField(tiff, TiffTag.IMAGELENGTH);
+
+    var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
+    volumeLoaded = false;
+    if (volumeTexture) {
+        gl.deleteTexture(volumeTexture);
+    }
+    if (glFormat == gl.R8) {
+        gl.activeTexture(gl.TEXTURE0);
+    } else {
+        gl.activeTexture(gl.TEXTURE5);
+    }
+    volumeTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+    gl.texStorage3D(gl.TEXTURE_3D, 1, glFormat, volDims[0], volDims[1], volDims[2]);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    if (glFormat == gl.R8) {
+        volumeIsInt = 0;
+        volValueRange[0] = 0;
+        volValueRange[1] = 1;
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    } else {
+        volumeIsInt = 1;
+        // R16 is not normalized/texture filterable so we need to normalize it
+        volValueRange[0] = Infinity;
+        volValueRange[1] = -Infinity;
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    }
 }
 
 var loadTIFFSlice = function(tiff, z_index) {
@@ -601,8 +630,6 @@ var uploadTIFF = function(files) {
                 return;
             }
 
-            var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
-            var bytesPerSample = GetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
             var width = GetField(tiff, TiffTag.IMAGEWIDTH);
             var height = GetField(tiff, TiffTag.IMAGELENGTH);
             volDims = [width, height, 0];
@@ -617,37 +644,7 @@ var uploadTIFF = function(files) {
                     "Volume: Stack '" + files[0].name + "', " + files.length + " slices";
             }
 
-            var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
-            volumeLoaded = false;
-            if (volumeTexture) {
-                gl.deleteTexture(volumeTexture);
-            }
-            if (glFormat == gl.R8) {
-                gl.activeTexture(gl.TEXTURE0);
-            } else {
-                gl.activeTexture(gl.TEXTURE5);
-            }
-            volumeTexture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
-            gl.texStorage3D(gl.TEXTURE_3D, 1, glFormat, volDims[0], volDims[1], volDims[2]);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-            if (glFormat == gl.R8) {
-                volumeIsInt = 0;
-                volValueRange[0] = 0;
-                volValueRange[1] = 1;
-                gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            } else {
-                volumeIsInt = 1;
-                // R16 is not normalized/texture filterable so we need to normalize it
-                volValueRange[0] = Infinity;
-                volValueRange[1] = -Infinity;
-                gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-                gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            }
+            makeTIFFGLVolume(tiff);
 
             if (numDirectories == 0) {
                 TIFFClose(tiff);
@@ -663,6 +660,72 @@ var uploadTIFF = function(files) {
         }
     };
     reader.readAsArrayBuffer(files[0]);
+}
+
+var fetchTIFF = function() {
+    var url = document.getElementById("fetchTIFF").value;
+
+    // Users will paste the shared URL from dropbox if they use that,
+    // so we need to change it to the direct URL to fetch from
+    var dropboxRegex = /.*dropbox.com\/s\/([^?]+)/
+    var m = url.match(dropboxRegex);
+    if (m) {
+        url = "https://www.dl.dropboxusercontent.com/s/" + m[1] + "?dl=1";
+    }
+    var req = new XMLHttpRequest();
+
+    loadingProgressText.innerHTML = "Loading Volume";
+    loadingProgressBar.setAttribute("style", "width: 0%");
+
+    req.open("GET", url, true);
+    req.responseType = "arraybuffer";
+    req.onerror = function(evt) {
+        loadingProgressText.innerHTML = "Error Loading Volume: Does your resource support CORS?";
+        loadingProgressBar.setAttribute("style", "width: 0%");
+        alert("Failed to load volume at " + url + ". Does the resource support CORS?");
+    };
+    req.onload = function(evt) {
+        loadingProgressText.innerHTML = "Fetched Volume";
+        loadingProgressBar.setAttribute("style", "width: 50%");
+        var dataBuffer = req.response;
+        if (dataBuffer) {
+            FS.createDataFile("/", "remote_fetch.tiff", new Uint8Array(dataBuffer), true, false);
+            var tiff = TIFFOpen("remote_fetch.tiff", "r");
+
+            var numDirectories = 0;
+            if (GetField(tiff, TiffTag.SUBFILETYPE) == 2) {
+                do {
+                    ++numDirectories;
+                } while (TIFFReadDirectory(tiff));
+                TIFFSetDirectory(tiff, 0);
+            }
+
+            // We only support single channel images
+            if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
+                alert("Only single channel images are supported");
+                return;
+            }
+
+            if (numDirectories == 0) {
+                alert("Only multi-page TIFFs are supported via remote fetch");
+            }
+
+            var width = GetField(tiff, TiffTag.IMAGEWIDTH);
+            var height = GetField(tiff, TiffTag.IMAGELENGTH);
+            volDims = [width, height, numDirectories];
+            document.getElementById("volumeName").innerHTML =
+                "Volume: Multi-page '" + url + "', " + numDirectories + " pages";
+
+            makeTIFFGLVolume(tiff);
+
+            loadMultipageTiff(tiff, numDirectories);
+            TIFFClose(tiff);
+            FS.unlink("/remote_fetch.tiff");
+        } else {
+            alert("Unable to load TIFF from remote URL");
+        }
+    };
+    req.send();
 }
 
 // Load up the SWC files the user gave us
