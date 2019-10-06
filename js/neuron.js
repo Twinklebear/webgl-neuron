@@ -38,7 +38,7 @@ var volumeTexture = null;
 var volumeLoaded = false;
 var volumeVao = null;
 var volDims = null;
-var volValueRange = null;
+var volValueRange = [0, 1];
 var volumeIsInt = 0;
 
 var colormapTex = null;
@@ -134,6 +134,11 @@ var loadRAWVolume = function(file, onload) {
 var renderLoop = function() {
     // Save them some battery if they're not viewing the tab
     if (document.hidden) {
+        return;
+    }
+    if (!volumeLoaded) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         return;
     }
 
@@ -262,7 +267,7 @@ var selectColormap = function() {
     colormapImage.src = colormaps[selection];
 }
 
-window.onload = function(){
+window.onload = function() {
     fillcolormapSelector();
 
     highlightTrace = document.getElementById("highlightTrace");
@@ -280,15 +285,26 @@ window.onload = function(){
     // For some random JS/HTML reason it won't find the function if it's not set here
     document.getElementById("fetchTIFFButton").onclick = fetchTIFF;
 
+    var volumeURL = null;
     if (window.location.hash) {
         var regexResolution = /(\d+)x(\d+)/;
-        var resolutionString = decodeURI(window.location.hash.substr(1));
-        var m = resolutionString.match(regexResolution);
-        WIDTH = parseInt(m[1]);
-        HEIGHT = parseInt(m[2]);
-        canvas.width = WIDTH;
-        canvas.height = HEIGHT;
-        canvas.className = "";
+        var urlParams = window.location.hash.substr(1).split("&");
+        for (var i = 0; i < urlParams.length; ++i) {
+            var str = decodeURI(urlParams[i]);
+            if (str.startsWith("url=")) {
+                volumeURL = str.substr(4);
+                continue;
+            }
+
+            var m = str.match(regexResolution);
+            if (m) {
+                WIDTH = parseInt(m[1]);
+                HEIGHT = parseInt(m[2]);
+                canvas.width = WIDTH;
+                canvas.height = HEIGHT;
+                canvas.className = "";
+            }
+        }
     }
 
     gl = canvas.getContext("webgl2");
@@ -311,7 +327,6 @@ window.onload = function(){
     controller.mousemove = function(prev, cur, evt) {
         if (evt.buttons == 1) {
             camera.rotate(prev, cur);
-
         } else if (evt.buttons == 2) {
             camera.pan([cur[0] - prev[0], prev[1] - cur[1]]);
         }
@@ -408,7 +423,12 @@ window.onload = function(){
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 180, 1,
             gl.RGBA, gl.UNSIGNED_BYTE, colormapImage);
 
-        loadRAWVolume(volumes["DIADEM NC Layer 1 Axons"]);
+
+        if (volumeURL) {
+            fetchTIFFURL(volumeURL);
+        } else {
+            loadRAWVolume(volumes["DIADEM NC Layer 1 Axons"]);
+        }
         setInterval(renderLoop, targetFrameTime);
     };
     colormapImage.src = "colormaps/grayscale.png";
@@ -446,7 +466,6 @@ var makeTIFFGLVolume = function(tiff) {
     var height = GetField(tiff, TiffTag.IMAGELENGTH);
 
     var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
-    volumeLoaded = false;
     if (volumeTexture) {
         gl.deleteTexture(volumeTexture);
     }
@@ -559,6 +578,7 @@ var loadMultipageTiff = function(tiff, numDirectories) {
 
 var uploadTIFF = function(files) {
     var numLoaded = 0;
+    volumeLoaded = false;
 
     loadingProgressText.innerHTML = "Loading Volume";
     loadingProgressBar.setAttribute("style", "width: 0%");
@@ -664,6 +684,11 @@ var uploadTIFF = function(files) {
 
 var fetchTIFF = function() {
     var url = document.getElementById("fetchTIFF").value;
+    fetchTIFFURL(url);
+}
+
+var fetchTIFFURL = function(url) {
+    volumeLoaded = false;
 
     // Users will paste the shared URL from dropbox if they use that,
     // so we need to change it to the direct URL to fetch from
@@ -672,6 +697,7 @@ var fetchTIFF = function() {
     if (m) {
         url = "https://www.dl.dropboxusercontent.com/s/" + m[1] + "?dl=1";
     }
+    window.location.hash = "#url=" + url;
     var req = new XMLHttpRequest();
 
     loadingProgressText.innerHTML = "Loading Volume";
@@ -688,7 +714,7 @@ var fetchTIFF = function() {
         loadingProgressText.innerHTML = "Fetched Volume";
         loadingProgressBar.setAttribute("style", "width: 50%");
         var dataBuffer = req.response;
-        if (dataBuffer) {
+        if (req.status == 200 && dataBuffer) {
             FS.createDataFile("/", "remote_fetch.tiff", new Uint8Array(dataBuffer), true, false);
             var tiff = TIFFOpen("remote_fetch.tiff", "r");
 
