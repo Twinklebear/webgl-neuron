@@ -426,6 +426,7 @@ window.onload = function() {
 
         if (volumeURL) {
             fetchTIFFURL(volumeURL);
+            document.getElementById("tiffUploadBox").style = "display:block";
         } else {
             loadRAWVolume(volumes["DIADEM NC Layer 1 Axons"]);
         }
@@ -637,7 +638,7 @@ var uploadTIFF = function(files) {
             var tiff = TIFFOpen("temp_test.tiff", "r");
 
             var numDirectories = 0;
-            if (GetField(tiff, TiffTag.SUBFILETYPE) == 2) {
+            if (!TIFFLastDirectory(tiff)) {
                 do {
                     ++numDirectories;
                 } while (TIFFReadDirectory(tiff));
