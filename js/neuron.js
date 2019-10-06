@@ -592,7 +592,6 @@ var uploadTIFF = function(files) {
                 do {
                     ++numDirectories;
                 } while (TIFFReadDirectory(tiff));
-                console.log("TIFF has " + numDirectories + " dirs");
                 TIFFSetDirectory(tiff, 0);
             }
 
