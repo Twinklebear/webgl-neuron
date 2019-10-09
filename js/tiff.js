@@ -220,11 +220,13 @@ var TIFFMalloc = Module.cwrap("_TIFFmalloc", "number", ["number"]);
 
 var TIFFFree = Module.cwrap("_TIFFfree", "number", ["number"]);
 
-var GetField = Module.cwrap("GetField", "number", ["number", "number"]);
+var TIFFGetField = Module.cwrap("GetField", "number", ["number", "number"]);
 
 var TIFFLastDirectory = Module.cwrap("LastDirectory", "number", ["number"]);
 
 var TIFFReadDirectory = Module.cwrap("ReadDirectory", "number", ["number"]);
 
 var TIFFSetDirectory = Module.cwrap("SetDirectory", "number", ["number", "number"]);
+
+var TIFFGetStringField = Module.cwrap("GetStringField", "string", ["number", "number"]);
 

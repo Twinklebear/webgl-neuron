@@ -27,6 +27,7 @@ var volumeThreshold = null;
 
 var loadingProgressText = null;
 var loadingProgressBar = null;
+var voxelSpacingInputs = null;
 
 var renderTargets = null;
 var depthColorFbo = null
@@ -71,6 +72,22 @@ var colormaps = {
     "Samsel Linear YGB 1211G": "colormaps/samsel-linear-ygb-1211g.png",
 };
 
+var getVoxelSpacing = function() {
+    var spacing = [1, 1, 1];
+    for (var i = 0; i < 3; ++i) {
+        try {
+            spacing[i] = parseInt(voxelSpacingInputs[i].value);
+            if (spacing[i] < 1) {
+                spacing[i] = 1;
+            }
+            voxelSpacingInputs[i].value = spacing[i];
+        } catch (e) {
+            spacing[i] = 1;
+        }
+    }
+    return spacing;
+}
+
 var loadRAWVolume = function(file, onload) {
     // Only one raw volume here anyway
     document.getElementById("volumeName").innerHTML = "Volume: DIADEM NC Layer 1 Axons";
@@ -83,6 +100,10 @@ var loadRAWVolume = function(file, onload) {
 
     loadingProgressText.innerHTML = "Loading Volume";
     loadingProgressBar.setAttribute("style", "width: 0%");
+
+    for (var i = 0; i < 3; ++i) {
+        voxelSpacingInputs[i].value = 1;
+    }
 
     req.open("GET", url, true);
     req.responseType = "arraybuffer";
@@ -156,8 +177,10 @@ var renderLoop = function() {
     var eye = [camera.invCamera[12], camera.invCamera[13], camera.invCamera[14]];
 
     var longestAxis = Math.max(volDims[0], Math.max(volDims[1], volDims[2]));
-    var volScale = [volDims[0] / longestAxis, volDims[1] / longestAxis,
-        volDims[2] / longestAxis];
+    var voxelSpacing = getVoxelSpacing();
+    var volScale = [volDims[0] / longestAxis * voxelSpacing[0],
+        volDims[1] / longestAxis * voxelSpacing[1],
+        volDims[2] / longestAxis * voxelSpacing[2]];
 
     // Render any SWC files we have
     gl.bindFramebuffer(gl.FRAMEBUFFER, depthColorFbo);
@@ -285,6 +308,12 @@ window.onload = function() {
     // For some random JS/HTML reason it won't find the function if it's not set here
     document.getElementById("fetchTIFFButton").onclick = fetchTIFF;
     document.getElementById("uploadSWC").onchange = uploadSWC;
+
+    voxelSpacingInputs = [
+        document.getElementById("voxelSpacingX"),
+        document.getElementById("voxelSpacingY"),
+        document.getElementById("voxelSpacingZ")
+    ];
 
     var volumeURL = null;
     if (window.location.hash) {
@@ -462,10 +491,23 @@ var TIFFGLFormat = function(sampleFormat, bytesPerSample) {
 }
 
 var makeTIFFGLVolume = function(tiff) {
-    var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
-    var bytesPerSample = GetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
-    var width = GetField(tiff, TiffTag.IMAGEWIDTH);
-    var height = GetField(tiff, TiffTag.IMAGELENGTH);
+    var imgFormat = TIFFGetField(tiff, TiffTag.SAMPLEFORMAT);
+    var bytesPerSample = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+    var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+    var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
+
+    for (var i = 0; i < 3; ++i) {
+        voxelSpacingInputs[i].value = 1;
+    }
+
+    var description = TIFFGetStringField(tiff, TiffTag.IMAGEDESCRIPTION);
+    if (description) {
+        var findSpacing = /spacing=(\d+)/;
+        var m = description.match(findSpacing);
+        if (m) {
+            voxelSpacingInputs[2].value = parseInt(m[1]);
+        }
+    }
 
     var glFormat = TIFFGLFormat(imgFormat, bytesPerSample);
     if (volumeTexture) {
@@ -478,6 +520,7 @@ var makeTIFFGLVolume = function(tiff) {
     }
     volumeTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texStorage3D(gl.TEXTURE_3D, 1, glFormat, volDims[0], volDims[1], volDims[2]);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -500,23 +543,23 @@ var makeTIFFGLVolume = function(tiff) {
 }
 
 var loadTIFFSlice = function(tiff, z_index) {
-    var bps = GetField(tiff, TiffTag.BITSPERSAMPLE);
+    var bps = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE);
 
     // We only support single channel images
-    if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
+    if (TIFFGetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
         alert("Only single channel images are supported");
         return;
     }
 
-    var imgFormat = GetField(tiff, TiffTag.SAMPLEFORMAT);
+    var imgFormat = TIFFGetField(tiff, TiffTag.SAMPLEFORMAT);
 
-    var width = GetField(tiff, TiffTag.IMAGEWIDTH);
-    var height = GetField(tiff, TiffTag.IMAGELENGTH);
+    var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+    var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
 
     var numStrips = TIFFNumberOfStrips(tiff);
-    var rowsPerStrip = GetField(tiff, TiffTag.ROWSPERSTRIP);
+    var rowsPerStrip = TIFFGetField(tiff, TiffTag.ROWSPERSTRIP);
 
-    var bytesPerSample = GetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+    var bytesPerSample = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
 
     var img = new Uint8Array(width * height * bytesPerSample);
     var sbuf = TIFFMalloc(TIFFStripSize(tiff));
@@ -647,13 +690,13 @@ var uploadTIFF = function(files) {
             }
 
             // We only support single channel images
-            if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
+            if (TIFFGetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
                 alert("Only single channel images are supported");
                 return;
             }
 
-            var width = GetField(tiff, TiffTag.IMAGEWIDTH);
-            var height = GetField(tiff, TiffTag.IMAGELENGTH);
+            var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+            var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
             volDims = [width, height, 0];
             if (numDirectories != 0) {
                 volDims[2] = numDirectories;
@@ -699,6 +742,7 @@ var fetchTIFFURL = function(url) {
     if (m) {
         url = "https://www.dl.dropboxusercontent.com/s/" + m[1] + "?dl=1";
     }
+
     window.location.hash = "#url=" + url;
     var req = new XMLHttpRequest();
 
@@ -721,7 +765,7 @@ var fetchTIFFURL = function(url) {
             var tiff = TIFFOpen("remote_fetch.tiff", "r");
 
             var numDirectories = 0;
-            if (GetField(tiff, TiffTag.SUBFILETYPE) == 2) {
+            if (!TIFFLastDirectory(tiff)) {
                 do {
                     ++numDirectories;
                 } while (TIFFReadDirectory(tiff));
@@ -729,24 +773,21 @@ var fetchTIFFURL = function(url) {
             }
 
             // We only support single channel images
-            if (GetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
+            if (TIFFGetField(tiff, TiffTag.SAMPLESPERPIXEL) != 1) {
                 alert("Only single channel images are supported");
-                return;
-            }
-
-            if (numDirectories == 0) {
+            } else if (numDirectories == 0) {
                 alert("Only multi-page TIFFs are supported via remote fetch");
+            } else {
+                var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+                var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
+                volDims = [width, height, numDirectories];
+                document.getElementById("volumeName").innerHTML =
+                    "Volume: Multi-page '" + url + "', " + numDirectories + " pages";
+
+                makeTIFFGLVolume(tiff);
+
+                loadMultipageTiff(tiff, numDirectories);
             }
-
-            var width = GetField(tiff, TiffTag.IMAGEWIDTH);
-            var height = GetField(tiff, TiffTag.IMAGELENGTH);
-            volDims = [width, height, numDirectories];
-            document.getElementById("volumeName").innerHTML =
-                "Volume: Multi-page '" + url + "', " + numDirectories + " pages";
-
-            makeTIFFGLVolume(tiff);
-
-            loadMultipageTiff(tiff, numDirectories);
             TIFFClose(tiff);
             FS.unlink("/remote_fetch.tiff");
         } else {
