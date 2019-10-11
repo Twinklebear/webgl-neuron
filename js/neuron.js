@@ -542,7 +542,7 @@ var makeTIFFGLVolume = function(tiff) {
     }
 }
 
-var loadTIFFSlice = function(tiff, z_index) {
+var loadTIFFSlice = function(tiff, z_index, slice_scratch) {
     var bps = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE);
 
     // We only support single channel images
@@ -561,7 +561,6 @@ var loadTIFFSlice = function(tiff, z_index) {
 
     var bytesPerSample = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
 
-    var img = new Uint8Array(width * height * bytesPerSample);
     var sbuf = TIFFMalloc(TIFFStripSize(tiff));
     for (var s = 0; s < numStrips; ++s) {
         var read = TIFFReadEncodedStrip(tiff, s, sbuf, -1);
@@ -570,7 +569,7 @@ var loadTIFFSlice = function(tiff, z_index) {
         }
         // Just make a view into the heap, not a copy
         var stripData = new Uint8Array(Module.HEAPU8.buffer, sbuf, read);
-        img.set(stripData, s * rowsPerStrip * width * bytesPerSample);
+        slice_scratch.set(stripData, s * rowsPerStrip * width * bytesPerSample);
     }
     TIFFFree(sbuf);
 
@@ -578,10 +577,10 @@ var loadTIFFSlice = function(tiff, z_index) {
     for (var y = 0; y < height / 2; ++y) {
         for (var x = 0; x < width; ++x) {
             for (var b = 0; b < bytesPerSample; ++b) {
-                var tmp = img[(y * width + x) * bytesPerSample];
-                img[(y * width + x) * bytesPerSample] =
-                    img[((height - y - 1) * width + x) * bytesPerSample];
-                img[((height - y - 1) * width + x) * bytesPerSample] = tmp;
+                var tmp = slice_scratch[(y * width + x) * bytesPerSample];
+                slice_scratch[(y * width + x) * bytesPerSample] =
+                    slice_scratch[((height - y - 1) * width + x) * bytesPerSample];
+                slice_scratch[((height - y - 1) * width + x) * bytesPerSample] = tmp;
             }
         }
     }
@@ -591,11 +590,11 @@ var loadTIFFSlice = function(tiff, z_index) {
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
         gl.texSubImage3D(gl.TEXTURE_3D, 0, 0, 0, z_index,
-            width, height, 1, gl.RED, gl.UNSIGNED_BYTE, img);
+            width, height, 1, gl.RED, gl.UNSIGNED_BYTE, slice_scratch);
     } else {
         gl.activeTexture(gl.TEXTURE5);
         gl.bindTexture(gl.TEXTURE_3D, volumeTexture);
-        var u16arr = new Uint16Array(img.buffer);
+        var u16arr = new Uint16Array(slice_scratch.buffer);
         for (var j = 0; j < u16arr.length; ++j) {
             volValueRange[0] = Math.min(volValueRange[0], u16arr[j]);
             volValueRange[1] = Math.max(volValueRange[1], u16arr[j]);
@@ -607,8 +606,12 @@ var loadTIFFSlice = function(tiff, z_index) {
 
 var loadMultipageTiff = function(tiff, numDirectories) {
     TIFFSetDirectory(tiff, 0);
+    var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+    var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
+    var bytesPerSample = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+    var slice_scratch = new Uint8Array(width * height * bytesPerSample);
     for (var i = 0; i < numDirectories; ++i) {
-        loadTIFFSlice(tiff, i);
+        loadTIFFSlice(tiff, i, slice_scratch);
         TIFFReadDirectory(tiff);
 
         var percent = i / numDirectories * 100;
@@ -628,6 +631,8 @@ var uploadTIFF = function(files) {
     loadingProgressText.innerHTML = "Loading Volume";
     loadingProgressBar.setAttribute("style", "width: 0%");
 
+    var slice_scratch = null;
+
     var loadFile = function(i) {
         var file = files[i];
         var reader = new FileReader();
@@ -645,7 +650,14 @@ var uploadTIFF = function(files) {
                 FS.createDataFile("/", fname, new Uint8Array(reader.result), true, false);
                 var tiff = TIFFOpen(fname, "r");
 
-                loadTIFFSlice(tiff, i);
+                if (!slice_scratch) {
+                    var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
+                    var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
+                    var bytesPerSample = TIFFGetField(tiff, TiffTag.BITSPERSAMPLE) / 8;
+                    slice_scratch = new Uint8Array(width * height * bytesPerSample);
+                }
+
+                loadTIFFSlice(tiff, i, slice_scratch);
 
                 TIFFClose(tiff);
                 FS.unlink("/" + fname);
@@ -735,15 +747,27 @@ var fetchTIFF = function() {
 var fetchTIFFURL = function(url) {
     volumeLoaded = false;
 
-    // Users will paste the shared URL from dropbox if they use that,
+    window.location.hash = "#url=" + url;
+
+    // Users will paste the shared URL from Dropbox or Google Drive
     // so we need to change it to the direct URL to fetch from
     var dropboxRegex = /.*dropbox.com\/s\/([^?]+)/
+    var googleDriveRegex = /.*drive.google.com.*id=([^&]+)/
     var m = url.match(dropboxRegex);
     if (m) {
         url = "https://www.dl.dropboxusercontent.com/s/" + m[1] + "?dl=1";
+    } else {
+        m = url.match(googleDriveRegex);
+        if (m) {
+            var GOOGLE_DRIVE_API_KEY = "";
+            url = "https://www.googleapis.com/drive/v3/files/" + m[1] +
+                "?alt=media&key=" + GOOGLE_DRIVE_API_KEY;
+        } else {
+            alert("Unsupported/handled URL: " + url);
+            return;
+        }
     }
 
-    window.location.hash = "#url=" + url;
     var req = new XMLHttpRequest();
 
     loadingProgressText.innerHTML = "Loading Volume";
