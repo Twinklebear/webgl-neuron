@@ -18,12 +18,16 @@
 				<canvas id="glcanvas" class="img-fluid" width="640" height="480"></canvas>
 			</div>
 			<div class="mx-auto col-12 col-lg-8 row">
-				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
+                <div class="col-12 col-lg-12">
 					<p id="volumeName">Volume:</p>
 				</div>
 				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
 					Colormap: <select id="colormapList" onchange="selectColormap()"></select>
 				</div>
+				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
+                    <button id="shareURLButton" type="button" class="btn btn-primary">Share Viewer URL</button>
+                </div>
+
 
 				<div class="col-12 mb-lg-2 mb-2 mt-2">
 					<label for="threshold">Volume Threshold</label>

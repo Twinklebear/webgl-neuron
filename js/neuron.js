@@ -29,6 +29,8 @@ var saturationThreshold = null;
 var loadingProgressText = null;
 var loadingProgressBar = null;
 var voxelSpacingInputs = null;
+var voxelSpacingFromURL = false;
+var volumeURL = null;
 
 var renderTargets = null;
 var depthColorFbo = null
@@ -89,6 +91,39 @@ var getVoxelSpacing = function() {
     return spacing;
 }
 
+var buildShareURL = function() {
+    window.location.hash = "";
+    if (volumeURL) {
+        window.location.hash += "url=" + volumeURL + "&";
+    }
+
+    var spacing = getVoxelSpacing();
+    if (spacing[0] != 1 || spacing[1] != 1 || spacing[2] != 1) {
+        window.location.hash += "vox=" + spacing[0] + "x" + spacing[1] + "x" + spacing[2];
+    }
+
+    window.location.hash += "thresh=" + volumeThreshold.value + "&";
+    window.location.hash += "sat=" + saturationThreshold.value + "&";
+
+    var selection = document.getElementById("colormapList").value;
+    if (selection == "Grayscale") {
+        window.location.hash += "cmap=" + 1;
+    } else if (selection == "Cool Warm") {
+        window.location.hash += "cmap=" + 2;
+    } else if (selection == "Matplotlib Plasma") {
+        window.location.hash += "cmap=" + 3;
+    } else if (selection == "Matplotlib Virdis") {
+        window.location.hash += "cmap=" + 4;
+    } else if (selection == "Rainbow") {
+        window.location.hash += "cmap=" + 5;
+    } else if (selection == "Samsel Linear Green") {
+        window.location.hash += "cmap=" + 6;
+    } else if (selection == "Samsel Linear YGB 1211G") {
+        window.location.hash += "cmap=" + 7;
+    }
+    console.log(window.location);
+}
+
 var loadRAWVolume = function(file, onload) {
     // Only one raw volume here anyway
     document.getElementById("volumeName").innerHTML = "Volume: DIADEM NC Layer 1 Axons";
@@ -102,8 +137,10 @@ var loadRAWVolume = function(file, onload) {
     loadingProgressText.innerHTML = "Loading Volume";
     loadingProgressBar.setAttribute("style", "width: 0%");
 
-    for (var i = 0; i < 3; ++i) {
-        voxelSpacingInputs[i].value = 1;
+    if (!voxelSpacingFromURL) {
+        for (var i = 0; i < 3; ++i) {
+            voxelSpacingInputs[i].value = 1;
+        }
     }
 
     req.open("GET", url, true);
@@ -313,6 +350,7 @@ window.onload = function() {
     // For some random JS/HTML reason it won't find the function if it's not set here
     document.getElementById("fetchTIFFButton").onclick = fetchTIFF;
     document.getElementById("uploadSWC").onchange = uploadSWC;
+    document.getElementById("shareURLButton").onclick = buildShareURL;
 
     voxelSpacingInputs = [
         document.getElementById("voxelSpacingX"),
@@ -320,17 +358,56 @@ window.onload = function() {
         document.getElementById("voxelSpacingZ")
     ];
 
-    var volumeURL = null;
     if (window.location.hash) {
         var regexResolution = /(\d+)x(\d+)/;
+        var regexVoxelSpacing = /(\d+)x(\d+)x(\d+)/;
         var urlParams = window.location.hash.substr(1).split("&");
         for (var i = 0; i < urlParams.length; ++i) {
             var str = decodeURI(urlParams[i]);
+            // URL load param
             if (str.startsWith("url=")) {
                 volumeURL = str.substr(4);
                 continue;
             }
-
+            // Volume threshold
+            if (str.startsWith("thresh=")) {
+                volumeThreshold.value = clamp(parseFloat(str.substr(7)), 0, 1);
+                continue;
+            }
+            // Saturation threshold 
+            if (str.startsWith("sat=")) {
+                saturationThreshold.value = clamp(parseFloat(str.substr(4)), 0, 1);
+                continue;
+            }
+            // Voxel Spacing
+            if (str.startsWith("vox=")) {
+                var m = str.substr(4).match(regexVoxelSpacing);
+                voxelSpacingFromURL = true;
+                voxelSpacingInputs[0].value = Math.max(parseFloat(m[1]), 1);
+                voxelSpacingInputs[1].value = Math.max(parseFloat(m[2]), 1);
+                voxelSpacingInputs[2].value = Math.max(parseFloat(m[3]), 1);
+                continue;
+            }
+            // Colormap
+            if (str.startsWith("cmap=")) {
+                var cmap = parseInt(str.substr(5));
+                var selector = document.getElementById("colormapList");
+                selector.value = "Grayscale";
+                if (cmap == 2) {
+                    selector.value = "Cool Warm";
+                } else if (cmap == 3) {
+                    selector.value = "Matplotlib Plasma";
+                } else if (cmap == 4) {
+                    selector.value = "Matplotlib Virdis";
+                } else if (cmap == 5) {
+                    selector.value = "Rainbow";
+                } else if (cmap == 6) {
+                    selector.value = "Samsel Linear Green";
+                } else if (cmap == 7) {
+                    selector.value = "Samsel Linear YGB 1211G";
+                }
+            }
+            // Canvas dimensions 
             var m = str.match(regexResolution);
             if (m) {
                 WIDTH = parseInt(m[1]);
@@ -467,7 +544,7 @@ window.onload = function() {
         }
         setInterval(renderLoop, targetFrameTime);
     };
-    colormapImage.src = "colormaps/grayscale.png";
+    colormapImage.src = colormaps[document.getElementById("colormapList").value];
 }
 
 var fillcolormapSelector = function() {
@@ -501,12 +578,14 @@ var makeTIFFGLVolume = function(tiff) {
     var width = TIFFGetField(tiff, TiffTag.IMAGEWIDTH);
     var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
 
-    for (var i = 0; i < 3; ++i) {
-        voxelSpacingInputs[i].value = 1;
+    if (!voxelSpacingFromURL) {
+        for (var i = 0; i < 3; ++i) {
+            voxelSpacingInputs[i].value = 1;
+        }
     }
 
     var description = TIFFGetStringField(tiff, TiffTag.IMAGEDESCRIPTION);
-    if (description) {
+    if (!voxelSpacingFromURL && description) {
         var findSpacing = /spacing=(\d+)/;
         var m = description.match(findSpacing);
         if (m) {
@@ -746,13 +825,12 @@ var uploadTIFF = function(files) {
 
 var fetchTIFF = function() {
     var url = document.getElementById("fetchTIFF").value;
+    voxelSpacingFromURL = false;
     fetchTIFFURL(url);
 }
 
 var fetchTIFFURL = function(url) {
     volumeLoaded = false;
-
-    window.location.hash = "#url=" + url;
 
     // Users will paste the shared URL from Dropbox or Google Drive
     // so we need to change it to the direct URL to fetch from
