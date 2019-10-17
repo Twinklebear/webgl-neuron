@@ -24,6 +24,7 @@ var swcShader = null;
 var highlightTrace = null;
 var showVolume = null;
 var volumeThreshold = null;
+var saturationThreshold = null;
 
 var loadingProgressText = null;
 var loadingProgressBar = null;
@@ -243,6 +244,7 @@ var renderLoop = function() {
         gl.uniform3fv(shader.uniforms["eye_pos"], eye);
         gl.uniform1i(shader.uniforms["highlight_trace"], highlightTrace.checked);
         gl.uniform1f(shader.uniforms["threshold"], volumeThreshold.value);
+        gl.uniform1f(shader.uniforms["saturation_threshold"], saturationThreshold.value);
 
         gl.bindVertexArray(volumeVao);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, cubeStrip.length / 3);
@@ -299,6 +301,9 @@ window.onload = function() {
 
     volumeThreshold = document.getElementById("threshold");
     volumeThreshold.value = 0.1;
+
+    saturationThreshold = document.getElementById("saturationThreshold");
+    saturationThreshold.value = 1;
 
     loadingProgressText = document.getElementById("loadingText");
     loadingProgressBar = document.getElementById("loadingProgressBar");

@@ -36,6 +36,7 @@ uniform mat4 inv_proj;
 uniform mat4 inv_view;
 uniform int highlight_trace;
 uniform float threshold;
+uniform float saturation_threshold;
 uniform int volume_is_int;
 uniform ivec2 canvas_dims;
 
@@ -119,6 +120,10 @@ void main(void) {
 			val = float(texture(ivolume, p).r);
 		}
 		val = (val - value_range.x) / (value_range.y - value_range.x);
+
+        if (val >= saturation_threshold) {
+            val = 1.0;
+        }
 
 		if (val >= threshold) {
 			val = clamp((val - threshold) / (1.0 - threshold), 0.0, 1.0);
