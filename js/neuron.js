@@ -711,6 +711,8 @@ var loadMultipageTiff = function(tiff, numDirectories) {
 }
 
 var uploadTIFF = function(files) {
+    var showURL = document.getElementById("shareURL").setAttribute("style", "display:none");
+
     var numLoaded = 0;
     volumeLoaded = false;
 
@@ -826,6 +828,7 @@ var uploadTIFF = function(files) {
 }
 
 var fetchTIFF = function() {
+    var showURL = document.getElementById("shareURL").setAttribute("style", "display:none");
     var url = document.getElementById("fetchTIFF").value;
     voxelSpacingFromURL = false;
     fetchTIFFURL(url);
