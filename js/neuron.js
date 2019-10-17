@@ -903,7 +903,7 @@ var fetchTIFFURL = function(url) {
                 var height = TIFFGetField(tiff, TiffTag.IMAGELENGTH);
                 volDims = [width, height, numDirectories];
                 document.getElementById("volumeName").innerHTML =
-                    "Volume: Multi-page '" + url + "', " + numDirectories + " pages";
+                    "Volume: Multi-page '" + volumeURL + "', " + numDirectories + " pages";
 
                 makeTIFFGLVolume(tiff);
 
