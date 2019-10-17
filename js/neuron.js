@@ -408,6 +408,14 @@ window.onload = function() {
                 } else if (cmap == 7) {
                     selector.value = "Samsel Linear YGB 1211G";
                 }
+                continue;
+            }
+            // When embedding as an iframe, go hide the UI text and leave just the controls
+            if (str == "embed") {
+                document.getElementById("viewerTitle").setAttribute("style", "display:none");
+                document.getElementById("shareURLUI").setAttribute("style", "display:none");
+                document.getElementById("uiText").setAttribute("style", "display:none");
+                document.getElementById("loadDiademReference").setAttribute("style", "display:none");
             }
             // Canvas dimensions 
             var m = str.match(regexResolution);
