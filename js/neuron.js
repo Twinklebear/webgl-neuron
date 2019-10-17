@@ -835,6 +835,7 @@ var fetchTIFF = function() {
 }
 
 var fetchTIFFURL = function(url) {
+    volumeURL = url;
     volumeLoaded = false;
 
     // Users will paste the shared URL from Dropbox or Google Drive
