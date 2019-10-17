@@ -24,10 +24,13 @@
 				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
 					Colormap: <select id="colormapList" onchange="selectColormap()"></select>
 				</div>
-				<div class="col-12 col-lg-6 mb-lg-0 mb-2">
-                    <button id="shareURLButton" type="button" class="btn btn-primary">Share Viewer URL</button>
+				<div class="col-12 col-lg-6 mb-lg-0 mb-2 d-flex justify-content-lg-end">
+                    <button href="javascript:void(0);" onclick="buildShareURL();"
+                        id="shareURLButton" type="button" class="btn btn-primary">Generate Viewer URL</button>
                 </div>
 
+                <div style="display:none" class="col-12 mt-2 mb-0 alert alert-primary" id="shareURL" role="alert">
+                </div>
 
 				<div class="col-12 mb-lg-2 mb-2 mt-2">
 					<label for="threshold">Volume Threshold</label>

@@ -99,7 +99,7 @@ var buildShareURL = function() {
 
     var spacing = getVoxelSpacing();
     if (spacing[0] != 1 || spacing[1] != 1 || spacing[2] != 1) {
-        window.location.hash += "vox=" + spacing[0] + "x" + spacing[1] + "x" + spacing[2];
+        window.location.hash += "vox=" + spacing[0] + "x" + spacing[1] + "x" + spacing[2] + "&";
     }
 
     window.location.hash += "thresh=" + volumeThreshold.value + "&";
@@ -121,7 +121,9 @@ var buildShareURL = function() {
     } else if (selection == "Samsel Linear YGB 1211G") {
         window.location.hash += "cmap=" + 7;
     }
-    console.log(window.location);
+    var showURL = document.getElementById("shareURL");
+    showURL.setAttribute("style", "display:block");
+    showURL.innerText = window.location;
 }
 
 var loadRAWVolume = function(file, onload) {
