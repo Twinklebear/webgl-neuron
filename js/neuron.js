@@ -192,6 +192,10 @@ var loadRAWVolume = function(file, onload) {
     req.send();
 }
 
+var num_diff_segment_vertices = 0;
+var diff_segments_vao = null;
+var diff_segments_vbo = null;
+
 var renderLoop = function() {
     // Save them some battery if they're not viewing the tab
     if (document.hidden) {
@@ -264,6 +268,17 @@ var renderLoop = function() {
                 gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
             }
         }
+    }
+
+    if (num_diff_segment_vertices > 0) {
+        swcShader.use(gl);
+        gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
+        gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
+        gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
+        gl.uniform3fv(swcShader.uniforms["swc_color"], [1.0, 0.0, 0.0]);
+
+        gl.bindVertexArray(diff_segments_vao);
+        gl.drawArrays(gl.LINES, 0, num_diff_segment_vertices);
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, colorFbo);
@@ -438,7 +453,7 @@ window.onload = function() {
     HEIGHT = canvas.getAttribute("height");
 
     proj = mat4.perspective(mat4.create(), 60 * Math.PI / 180.0,
-        WIDTH / HEIGHT, 0.1, 100);
+        WIDTH / HEIGHT, 0.01, 100);
     invProj = mat4.invert(mat4.create(), proj);
 
     camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
@@ -1026,35 +1041,80 @@ var colorBrewerColors = [
 */
 var nextSWCColor = 0;
 
+var swcSelectionChanged = function() {
+    // Find the two which are selected
+    var a = -1;
+    var b = -1;
+    var warned = false;
+    for (var i = 0; i < neurons.length; ++i) {
+        if (neurons[i].selected.checked) {
+            if (a == -1) {
+                a = i;
+            } else if (b == -1) {
+                b = i;
+            } else {
+                neurons[i].selected.checked = false;
+                if (!warned) {
+                    warned = true;
+                    alert("Only two neurons can be compared, automatically deselecting others");
+                }
+            }
+        }
+    }
+
+    if (a != -1 && b != -1) {
+        var diff_segments = computeTreeDifferences(neurons[a], neurons[b]);
+        num_diff_segment_vertices = diff_segments.length / 3;
+
+        if (!diff_segments_vao) {
+            diff_segments_vao = gl.createVertexArray();
+        }
+        gl.bindVertexArray(diff_segments_vao);
+
+        if (!diff_segments_vbo) {
+            diff_segments_vbo = gl.createBuffer();
+        }
+        gl.bindBuffer(gl.ARRAY_BUFFER, diff_segments_vbo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(diff_segments), gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    } else {
+        num_diff_segment_vertices = 0;
+    }
+}
+
 var addSWCFile = function(swc) {
     var swcHTMLContent = `
         <div class="col-12 mt-2 mb-2" id="swc">
         <div class="row">
-        <div class="col-3" style="overflow-wrap:break-word;">
-        ${swc.name}
-        </div>
-        <div class="col-3 text-right" id="numSoma">
-        ${swc.numSoma}
-        </div>
-        <div class="col-3 text-right" id="numBranches">
-        ${swc.branches.length}
-        </div>
-        <div class="col-3 text-right" id="numPoints">
-        ${swc.points.length / 3}
-        </div>
+            <div class="col-3" style="overflow-wrap:break-word;">
+            ${swc.name}
+            </div>
+            <div class="col-3 text-right" id="numSoma">
+            ${swc.numSoma}
+            </div>
+            <div class="col-3 text-right" id="numBranches">
+            ${swc.branches.length}
+            </div>
+            <div class="col-3 text-right" id="numPoints">
+            ${swc.points.length / 3}
+            </div>
         </div>
         <div class="form-row">
-        <div class="col-6 text-center">
-        <input type="checkbox" class="form-check-input"
-    id="traceVisible${neurons.length}">
-        <label class="form-check-label" for="traceVisible${neurons.length}">
-        Visible</label>
-        </div>
-        <div class="col-6 text-center">
-        <label for="swcColor${neurons.length}">Color</label>
-        <input type="color" class="form-control" value="#ff0000"
-    id="swcColor${neurons.length}">
-        </div>
+            <div class="col-3 text-center">
+                <input type="checkbox" class="form-check-input" id="traceVisible${neurons.length}">
+                <label class="form-check-label" for="traceVisible${neurons.length}">
+                Visible</label>
+            </div>
+            <div class="col-3 text-center">
+                <input type="checkbox" class="form-check-input" id="traceSelected${neurons.length}">
+                <label class="form-check-label" for="traceSelected${neurons.length}">
+                Compare</label>
+            </div>
+            <div class="col-6 text-center">
+                <label for="swcColor${neurons.length}">Color</label>
+                <input type="color" class="form-control" value="#ff0000" id="swcColor${neurons.length}">
+            </div>
         </div>
         <hr>
         </div>
@@ -1063,6 +1123,9 @@ var addSWCFile = function(swc) {
 
     swc.visible = document.getElementById("traceVisible" + neurons.length);
     swc.visible.checked = true;
+    swc.selected = document.getElementById("traceSelected" + neurons.length);
+    swc.selected.checked = false;
+    swc.selected.addEventListener("change", swcSelectionChanged);
     swc.color = document.getElementById("swcColor" + neurons.length);
     swc.color.value = colorBrewerColors[nextSWCColor];
     nextSWCColor = (nextSWCColor + 1) % colorBrewerColors.length;
