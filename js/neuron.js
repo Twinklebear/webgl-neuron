@@ -22,6 +22,7 @@ var neurons = [];
 var swcShader = null;
 
 var highlightTrace = null;
+var highlightErrors = null;
 var showVolume = null;
 var volumeThreshold = null;
 var saturationThreshold = null;
@@ -232,6 +233,12 @@ var renderLoop = function() {
     gl.enable(gl.DEPTH_TEST);
     if (neurons.length > 0) {
         swcShader.use(gl);
+        gl.uniform1i(swcShader.uniforms["volume"], 0);
+        gl.uniform1i(swcShader.uniforms["ivolume"], 5);
+        gl.uniform2fv(swcShader.uniforms["value_range"], volValueRange);
+        gl.uniform1i(swcShader.uniforms["volume_is_int"], volumeIsInt);
+        gl.uniform1i(swcShader.uniforms["highlight_errors"], highlightErrors.checked);
+
         gl.uniform3iv(swcShader.uniforms["volume_dims"], volDims);
         gl.uniform3fv(swcShader.uniforms["volume_scale"], volScale);
         gl.uniformMatrix4fv(swcShader.uniforms["proj_view"], false, projView);
@@ -350,6 +357,9 @@ window.onload = function() {
     fillcolormapSelector();
 
     highlightTrace = document.getElementById("highlightTrace");
+    highlightErrors = document.getElementById("highlightErrors");
+    highlightErrors.checked = false;
+
     showVolume = document.getElementById("showVolume");
     showVolume.checked = true;
 

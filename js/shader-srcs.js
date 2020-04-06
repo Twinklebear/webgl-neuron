@@ -142,34 +142,55 @@ void main(void) {
 
 var swcVertShader =
 `#version 300 es
-#line 127
+#line 146
 layout(location=0) in vec3 pos;
 
 uniform mat4 proj_view;
 uniform vec3 volume_scale;
 uniform ivec3 volume_dims;
 
+out vec3 vol_pos;
+
 void main(void) {
 	vec3 volume_translation = vec3(0.5) - volume_scale * 0.5;
-	gl_Position = proj_view * vec4((pos / vec3(volume_dims)) * volume_scale + volume_translation, 1);
+    vol_pos = (pos / vec3(volume_dims));
+	gl_Position = proj_view * vec4(vol_pos * volume_scale + volume_translation, 1.0);
 }`;
 
 var swcFragShader =
 `#version 300 es
-#line 141
+#line 163
 precision highp float;
+
+uniform highp sampler3D volume;
+uniform highp usampler3D ivolume;
+uniform vec2 value_range;
+uniform int volume_is_int;
+uniform int highlight_errors;
 
 uniform vec3 swc_color;
 
+in vec3 vol_pos;
 out vec4 color;
 
 void main(void) {
-	color = vec4(swc_color, 1);
+    float val = 0.0;
+    if (highlight_errors != 0) {
+        if (volume_is_int == 0) {
+            val = texture(volume, vol_pos).r;
+        } else {
+            val = float(texture(ivolume, vol_pos).r);
+        }
+        val = 1.f - (val - value_range.x) / (value_range.y - value_range.x);
+        const float error_threshold = 0.2f;
+        val = clamp(val - (1.f - error_threshold), 0.f, error_threshold) / error_threshold;
+    }
+	color = vec4(mix(swc_color, vec3(1, 0, 0), val), 1);
 }`;
 
 var quadVertShader =
 `#version 300 es
-#line 154
+#line 194
 const vec4 pos[4] = vec4[4](
 	vec4(-1, 1, 0.5, 1),
 	vec4(-1, -1, 0.5, 1),
@@ -182,7 +203,7 @@ void main(void){
 
 var quadFragShader =
 `#version 300 es
-#line 167
+#line 207
 precision highp int;
 precision highp float;
 
