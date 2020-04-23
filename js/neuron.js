@@ -272,6 +272,11 @@ var renderLoop = function() {
             gl.bindVertexArray(swc.vao);
             for (var j = 0; j < swc.branches.length; ++j) {
                 var b = swc.branches[j];
+                if (b["msc_branch"]) {
+                    gl.uniform1i(swcShader.uniforms["msc_branch"], 1);
+                } else {
+                    gl.uniform1i(swcShader.uniforms["msc_branch"], 0);
+                }
                 gl.drawElements(gl.LINE_STRIP, b["count"], gl.UNSIGNED_SHORT, 2 * b["start"]);
             }
         }

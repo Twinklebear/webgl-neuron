@@ -298,8 +298,8 @@ ArcballCamera.prototype.zoom = function(amount) {
     var vt = vec3.set(vec3.create(), 0.0, 0.0, amount * this.invScreen[1] * this.zoomSpeed);
     var t = mat4.fromTranslation(mat4.create(), vt);
     this.translation = mat4.mul(this.translation, t, this.translation);
-    if (this.translation[14] >= -0.2) {
-        this.translation[14] = -0.2;
+    if (this.translation[14] >= -0.05) {
+        this.translation[14] = -0.05;
     }
     this.updateCameraMatrix();
 }

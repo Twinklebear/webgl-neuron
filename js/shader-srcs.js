@@ -167,6 +167,7 @@ uniform highp usampler3D ivolume;
 uniform vec2 value_range;
 uniform int volume_is_int;
 uniform int highlight_errors;
+uniform bool msc_branch;
 
 uniform vec3 swc_color;
 
@@ -185,7 +186,12 @@ void main(void) {
         const float error_threshold = 0.2f;
         val = clamp(val - (1.f - error_threshold), 0.f, error_threshold) / error_threshold;
     }
-	color = vec4(mix(swc_color, vec3(1, 0, 0), val), 1);
+    if (msc_branch) {
+        color = vec4(1, 0, 0, 1);
+    } else {
+        color = vec4(0, 0, 1, 1);
+    }
+    //color = vec4(mix(swc_color, vec3(1, 0, 0), val), 1);
 }`;
 
 var quadVertShader =

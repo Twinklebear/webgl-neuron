@@ -1,3 +1,7 @@
+var distance = function(a, b) {
+    return Math.sqrt(Math.pow(a[0] - b[0], 2.0) + Math.pow(a[1] - b[1], 2.0) + Math.pow(a[2] - b[2], 2.0));
+}
+
 // Load the SWC Tree structure from the swc file passed
 var SWCTree = function(swcFile, name) {
     this.name = name;
@@ -55,10 +59,35 @@ var SWCTree = function(swcFile, name) {
         branch["count"] = this.indices.length - branch["start"];
         this.branches.push(branch);
     }
-}
 
-var distance = function(a, b) {
-    return Math.sqrt(Math.pow(a[0] - b[0], 2.0) + Math.pow(a[1] - b[1], 2.0) + Math.pow(a[2] - b[2], 2.0));
+    // Now compute which branches are done with MSC and not, based on the distance
+    // of the line segments
+    for (var i = 0; i < this.branches.length; ++i) {
+        var b = this.branches[i];
+
+        var avg_dist = 0;
+        var branch_is_msc = true;
+        //console.log(`computing distances on branch ${i} ${b["start"]} to ${b["start"] + b["count"]}`);
+        for (var j = 0; j < b["count"]; ++j) {
+            var idx_a = this.indices[b["start"] + j]
+            var idx_b = -1;
+            if (j == b["count"] - 1) {
+                idx_b = this.indices[b["start"] + j - 1]
+            } else {
+                idx_b = this.indices[b["start"] + j + 1]
+            }
+            var pa = [this.points[idx_a * 3], this.points[idx_a * 3 + 1], this.points[idx_a * 3 + 2]];
+            var pb = [this.points[idx_b * 3], this.points[idx_b * 3 + 1], this.points[idx_b * 3 + 2]];
+            var d = distance(pa, pb);
+            avg_dist += d;
+        }
+        avg_dist /= b["count"];
+        // This is something I think we should do per-point, but it seems the distances are pretty inconsistent
+        var branch_is_msc = Math.abs(avg_dist - 1) < 0.01 || Math.abs(avg_dist - 1.414) < 0.01 || Math.abs(avg_dist - 1.732) < 0.01;
+
+        console.log(`Avg. branch ${i} distance: ${avg_dist}, is msc? ${branch_is_msc}`);
+        b["msc_branch"] = branch_is_msc;
+    }
 }
 
 // Compute the difference lines between the two trees to draw as line segments
