@@ -83,9 +83,9 @@ var SWCTree = function(swcFile, name) {
         }
         avg_dist /= b["count"];
         // This is something I think we should do per-point, but it seems the distances are pretty inconsistent
-        var branch_is_msc = Math.abs(avg_dist - 1) < 0.01 || Math.abs(avg_dist - 1.414) < 0.01 || Math.abs(avg_dist - 1.732) < 0.01;
+        var branch_is_msc = avg_dist >= 1.35;
 
-        console.log(`Avg. branch ${i} distance: ${avg_dist}, is msc? ${branch_is_msc}`);
+        console.log(`File ${swcFile}: branch ${i} avg. distance: ${avg_dist}, is msc? ${branch_is_msc}`);
         b["msc_branch"] = branch_is_msc;
     }
 }
