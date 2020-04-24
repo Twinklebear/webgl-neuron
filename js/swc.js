@@ -85,9 +85,10 @@ var SWCTree = function(swcFile, name) {
         // This is something I think we should do per-point, but it seems the distances are pretty inconsistent
         var branch_is_msc = avg_dist >= 1.35;
 
-        console.log(`File ${swcFile}: branch ${i} avg. distance: ${avg_dist}, is msc? ${branch_is_msc}`);
+        console.log(`Branch ${i} avg. distance: ${avg_dist}, is msc? ${branch_is_msc}`);
         b["msc_branch"] = branch_is_msc;
     }
+    console.log('=======');
 }
 
 // Compute the difference lines between the two trees to draw as line segments
