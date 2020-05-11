@@ -753,6 +753,7 @@ var uploadTIFF = function(files) {
     loadingProgressBar.setAttribute("style", "width: 0%");
 
     var slice_scratch = null;
+    var start = performance.now();
 
     var loadFile = function(i) {
         var file = files[i];
@@ -785,10 +786,12 @@ var uploadTIFF = function(files) {
 
                 numLoaded += 1;
                 if (numLoaded == files.length) {
+                    var end = performance.now();
                     volumeLoaded = true;
                     newVolumeUpload = true;
                     loadingProgressText.innerHTML = "Loaded Volume";
                     loadingProgressBar.setAttribute("style", "width: 101%");
+                    console.log(`Loading TIFF took ${end - start}ms`);
                 } else {
                     var percent = numLoaded / files.length * 100;
                     loadingProgressBar.setAttribute("style", "width: " + percent.toFixed(2) + "%");
