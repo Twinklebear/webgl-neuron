@@ -216,7 +216,7 @@ var renderLoop = function() {
         gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
     }
 
-    var startTime = new Date();
+    var startTime = performance.now();
 
     projView = mat4.mul(projView, proj, camera.camera);
     var eye = [camera.invCamera[12], camera.invCamera[13], camera.invCamera[14]];
@@ -324,7 +324,7 @@ var renderLoop = function() {
 
     // Wait for rendering to actually finish
     gl.finish();
-    var endTime = new Date();
+    var endTime = performance.now();
     var renderTime = endTime - startTime;
     var targetSamplingRate = renderTime / targetFrameTime;
 
