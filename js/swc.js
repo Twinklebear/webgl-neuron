@@ -22,7 +22,7 @@ var SWCTree = function(swcFile, name) {
             branch = null;
             continue;
         }
-        var vals = lines[i].split(" ");
+        var vals = lines[i].trim().split(" ");
         var id = parseInt(vals[0]);
         var x = parseFloat(vals[2]);
         var y = parseFloat(vals[3]);
