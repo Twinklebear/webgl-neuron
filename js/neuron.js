@@ -442,6 +442,13 @@ window.onload = function() {
                 document.getElementById("uiText").setAttribute("style", "display:none");
                 document.getElementById("loadDiademReference").setAttribute("style", "display:none");
             }
+            if (str == "embedMinimal") {
+                document.getElementById("viewerTitle").setAttribute("style", "display:none");
+                document.getElementById("shareURLUI").setAttribute("style", "display:none");
+                document.getElementById("uiText").setAttribute("style", "display:none");
+                document.getElementById("loadDiademReference").setAttribute("style", "display:none");
+                document.getElementById("hideEmbedMinimal").setAttribute("style", "display:none");
+            }
             // Canvas dimensions 
             var m = str.match(regexResolution);
             if (m) {

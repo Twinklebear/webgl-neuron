@@ -90,77 +90,79 @@
 					</p>
 				</div>
 
-				<div class="col-12 col-lg-12 mt-0 mb-2">
-                    <i id="loadingText"></i>
-                    <div class="progress mb-2">
-                        <div id="loadingProgressBar" class="progress-bar" role="progressbar"
-                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                <div id="hideEmbedMinimal" class="col-12 row mt-0 mb-2">
+                    <div class="col-12 col-lg-12 mt-0 mb-2">
+                        <i id="loadingText"></i>
+                        <div class="progress mb-2">
+                            <div id="loadingProgressBar" class="progress-bar" role="progressbar"
+                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+
+                    <!-- hidden until the RAW is loaded -->
+                    <div class="col-12 mt-2 mb-2" style="display:none" id="tiffUploadBox">
+                        <div class="col-12 mt-0 mb-2">
+                            <input type="file" class="custom-file-input" id="uploadTIFF"
+                                    accept=".tif,.tiff,.TIF,.TIFF"
+                                    onchange="uploadTIFF(this.files);" multiple>
+                            <label class="custom-file-label" for="uploadTIFF">Upload TIFF Stack</label>
+                        </div>
+                        <form>
+                            <div class="form-group">
+                                <input type="text" class="form-control" id="fetchTIFF" placeholder="Enter a TIFF Stack URL">
+                            </div>
+                            <div class="form-group">
+                                <button id="fetchTIFFButton" type="button" class="btn btn-primary">Fetch TIFF URL</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-12 mt-2 mb-2">
+                        <h3>Traces</h3>
+                        <div class="form-row">
+                            <div class="col-6">
+                                <input type="checkbox" class="form-check-input" value="" id="highlightTrace">
+                                <label class="form-check-label" for="highlightTrace">
+                                    Highlight Traces</label>
+                            </div>
+                            <div class="col-6">
+                                <input type="checkbox" class="form-check-input" value="" id="highlightErrors">
+                                <label class="form-check-label" for="highlightErrors">
+                                    Highlight Errors</label>
+                            </div>
+                            <div class="col-6">
+                                <input type="checkbox" class="form-check-input" value="" id="showVolume">
+                                <label class="form-check-label" for="showVolume">
+                                    Show Volume</label>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-2 mb-2">
+                            <input type="file" class="custom-file-input" id="uploadSWC" accept=".swc" multiple>
+                            <label class="custom-file-label" for="uploadSWC">Upload SWC</label>
+                        </div>
+                        <div class="col-12 mt-2 mb-2" id="swcList">
+                            <div class="col-12 mt-2 mb-2" id="swcheader">
+                                <div class="row">
+                                    <div class="col-3">
+                                        <b>Name</b>
+                                    </div>
+                                    <div class="col-3 text-right" id="numSoma">
+                                        <b># Soma</b>
+                                    </div>
+                                    <div class="col-3 text-right" id="numBranches">
+                                        <b># Branches</b>
+                                    </div>
+                                    <div class="col-3 text-right" id="numPoints">
+                                        <b># Points</b>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" id="loadDiademReference"
+                            onclick="loadReference();">Load DIADEM Reference Traces</button>
                     </div>
                 </div>
-
-				<!-- hidden until the RAW is loaded -->
-				<div class="col-12 mt-2 mb-2" style="display:none" id="tiffUploadBox">
-					<div class="col-12 mt-0 mb-2">
-						<input type="file" class="custom-file-input" id="uploadTIFF"
-								accept=".tif,.tiff,.TIF,.TIFF"
-								onchange="uploadTIFF(this.files);" multiple>
-						<label class="custom-file-label" for="uploadTIFF">Upload TIFF Stack</label>
-                    </div>
-                    <form>
-                        <div class="form-group">
-                            <input type="text" class="form-control" id="fetchTIFF" placeholder="Enter a TIFF Stack URL">
-                        </div>
-                        <div class="form-group">
-                            <button id="fetchTIFFButton" type="button" class="btn btn-primary">Fetch TIFF URL</button>
-                        </div>
-                    </form>
-				</div>
-				<div class="col-12 mt-2 mb-2">
-					<h3>Traces</h3>
-					<div class="form-row">
-						<div class="col-6">
-							<input type="checkbox" class="form-check-input" value="" id="highlightTrace">
-							<label class="form-check-label" for="highlightTrace">
-								Highlight Traces</label>
-						</div>
-						<div class="col-6">
-							<input type="checkbox" class="form-check-input" value="" id="highlightErrors">
-							<label class="form-check-label" for="highlightErrors">
-								Highlight Errors</label>
-						</div>
-						<div class="col-6">
-							<input type="checkbox" class="form-check-input" value="" id="showVolume">
-							<label class="form-check-label" for="showVolume">
-								Show Volume</label>
-						</div>
-					</div>
-					<div class="col-12 mt-2 mb-2">
-						<input type="file" class="custom-file-input" id="uploadSWC" accept=".swc" multiple>
-						<label class="custom-file-label" for="uploadSWC">Upload SWC</label>
-					</div>
-					<div class="col-12 mt-2 mb-2" id="swcList">
-						<div class="col-12 mt-2 mb-2" id="swcheader">
-							<div class="row">
-								<div class="col-3">
-									<b>Name</b>
-								</div>
-								<div class="col-3 text-right" id="numSoma">
-									<b># Soma</b>
-								</div>
-								<div class="col-3 text-right" id="numBranches">
-									<b># Branches</b>
-								</div>
-								<div class="col-3 text-right" id="numPoints">
-									<b># Points</b>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="col-12">
-					<button type="button" class="btn btn-primary" id="loadDiademReference"
-						onclick="loadReference();">Load DIADEM Reference Traces</button>
-				</div>
 			</div>
 		</div>
 	</div>
