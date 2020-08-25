@@ -80,7 +80,7 @@ var getVoxelSpacing = function() {
     var spacing = [1, 1, 1];
     for (var i = 0; i < 3; ++i) {
         try {
-            spacing[i] = parseInt(voxelSpacingInputs[i].value);
+            spacing[i] = parseFloat(voxelSpacingInputs[i].value);
             if (spacing[i] < 1) {
                 spacing[i] = 1;
             }
@@ -387,10 +387,11 @@ window.onload = function() {
 
     if (window.location.hash) {
         var regexResolution = /(\d+)x(\d+)/;
-        var regexVoxelSpacing = /(\d+)x(\d+)x(\d+)/;
+        var regexVoxelSpacing = /(\d+\.?\d?)x(\d+\.?\d?)x(\d+\.?\d?)/;
         var urlParams = window.location.hash.substr(1).split("&");
         for (var i = 0; i < urlParams.length; ++i) {
             var str = decodeURI(urlParams[i]);
+            console.log(str);
             // URL load param
             if (str.startsWith("url=")) {
                 volumeURL = str.substr(4);
@@ -631,7 +632,7 @@ var makeTIFFGLVolume = function(tiff) {
         var findSpacing = /spacing=(\d+)/;
         var m = description.match(findSpacing);
         if (m) {
-            voxelSpacingInputs[2].value = parseInt(m[1]);
+            voxelSpacingInputs[2].value = parseFloat(m[1]);
         }
     }
 
