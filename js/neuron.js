@@ -47,7 +47,7 @@ var volValueRange = [0, 1];
 var volumeIsInt = 0;
 
 var colormapTex = null;
-var fileRegex = /.*\/(\w+)_(\d+)x(\d+)x(\d+)_(\w+)\.*/;
+var fileRegex = /(\w+)_(\d+)x(\d+)x(\d+)_(\w+)\.*/;
 var proj = null;
 var camera = null;
 var projView = null;
@@ -63,7 +63,7 @@ const center = vec3.set(vec3.create(), 0.5, 0.5, 0.5);
 const up = vec3.set(vec3.create(), 0.0, 1.0, 0.0);
 
 var volumes = {
-    "DIADEM NC Layer 1 Axons": "/04imux1qxpkilix/neocortical_layer_1_axons_1464x1033x76_uint8.raw",
+    "DIADEM NC Layer 1 Axons": "neocortical_layer_1_axons_1464x1033x76_uint8.raw",
 };
 
 var colormaps = {
@@ -134,7 +134,7 @@ var loadRAWVolume = function(file, onload) {
     var m = file.match(fileRegex);
     volDims = [parseInt(m[2]), parseInt(m[3]), parseInt(m[4])];
 
-    var url = "https://www.dl.dropboxusercontent.com/s/" + file + "?dl=1";
+    var url = "https://cdn.willusher.io/webgl-neuron-data/" + file;
     var req = new XMLHttpRequest();
 
     loadingProgressText.innerHTML = "Loading Volume";
@@ -210,7 +210,7 @@ var renderLoop = function() {
 
     // Reset the sampling rate and camera for new volumes
     if (newVolumeUpload) {
-        camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
+        camera = new ArcballCamera(defaultEye, center, up, 1, [WIDTH, HEIGHT]);
         samplingRate = 1.0;
         shader.use(gl);
         gl.uniform1f(shader.uniforms["dt_scale"], samplingRate);
@@ -474,7 +474,7 @@ window.onload = function() {
         WIDTH / HEIGHT, 0.01, 100);
     invProj = mat4.invert(mat4.create(), proj);
 
-    camera = new ArcballCamera(defaultEye, center, up, 2, [WIDTH, HEIGHT]);
+    camera = new ArcballCamera(defaultEye, center, up, 1, [WIDTH, HEIGHT]);
     projView = mat4.create();
 
     // Register mouse and touch listeners
@@ -984,47 +984,47 @@ var uploadSWC = function() {
 
 var loadReference = function() {
     var referenceTraces = [
-        "eoi1v4ljg57rxqi/NC_01.swc",
-        "bfiyjwh5yn1p0za/NC_02.swc",
-        "vwjwesnrbgr4tjj/NC_03.swc",
-        "jeufs20oc5yzvub/NC_04.swc",
-        "2ys0gk8635x9yt2/NC_05.swc",
-        "4xmm305jakor382/NC_06.swc",
-        "3o0fhvzfybpsp5z/NC_07.swc",
-        "hyhi1xav9ezvug8/NC_08.swc",
-        "yzko7oe1tn9p1ii/NC_09.swc",
-        "cs6er8399zmyezs/NC_10.swc",
-        "b7heei13tcmgzos/NC_11.swc",
-        "o0cw7b80xrvhnl3/NC_12.swc",
-        "fou5gezumjh704r/NC_13.swc",
-        "3xtb473tw9muhao/NC_14.swc",
-        "vegtbrhiesddmoc/NC_15.swc",
-        "e6qu43lxc0orrgi/NC_16.swc",
-        "se22spz51ocuwdm/NC_17.swc",
-        "rq129kxph1yqba3/NC_18.swc",
-        "0hqhfpovfjoitgg/NC_19.swc",
-        "ruxexsh7x5u5ue7/NC_20.swc",
-        "74bmqgoup2pejq3/NC_21.swc",
-        "yguszsopbyektdk/NC_22.swc",
-        "h1n9ecdr2v6x3qn/NC_23.swc",
-        "cnytvpzk4unva2f/NC_24.swc",
-        "g4hv06u5zuuhp4p/NC_25.swc",
-        "p71x8ic7fhdpry6/NC_26.swc",
-        "6r547xn8ohos6i4/NC_27.swc",
-        "s1sbs0ktmjq1gcj/NC_28.swc",
-        "q1w8m5nba9lafps/NC_29.swc",
-        "t3t9f1m61xe5dn2/NC_30.swc",
-        "smqs2reslrhwnh5/NC_31.swc",
-        "uj292uu3jjlmnn4/NC_32.swc",
-        "laq2jhdi4iytd9e/NC_33.swc",
-        "ml2cojmc7dz8tpy/NC_34.swc"
+        "NC_01.swc",
+        "NC_02.swc",
+        "NC_03.swc",
+        "NC_04.swc",
+        "NC_05.swc",
+        "NC_06.swc",
+        "NC_07.swc",
+        "NC_08.swc",
+        "NC_09.swc",
+        "NC_10.swc",
+        "NC_11.swc",
+        "NC_12.swc",
+        "NC_13.swc",
+        "NC_14.swc",
+        "NC_15.swc",
+        "NC_16.swc",
+        "NC_17.swc",
+        "NC_18.swc",
+        "NC_19.swc",
+        "NC_20.swc",
+        "NC_21.swc",
+        "NC_22.swc",
+        "NC_23.swc",
+        "NC_24.swc",
+        "NC_25.swc",
+        "NC_26.swc",
+        "NC_27.swc",
+        "NC_28.swc",
+        "NC_29.swc",
+        "NC_30.swc",
+        "NC_31.swc",
+        "NC_32.swc",
+        "NC_33.swc",
+        "NC_34.swc"
     ];
-    var swcFileRegex = /.*\/(\w+).swc.*/;
+    var swcFileRegex = /(\w+).swc.*/;
 
     // Javascript is a mess...
     var launcReq = function(i) {
         var file = referenceTraces[i];
-        var url = "https://www.dl.dropboxusercontent.com/s/" + file + "?dl=1";
+        var url = "https://cdn.willusher.io/webgl-neuron-data/" + file;
         var req = new XMLHttpRequest();
 
         req.open("GET", url, true);
